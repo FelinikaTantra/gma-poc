@@ -185,4 +185,71 @@ class ConversationEngineTest extends TestCase
             'message' => 'Auto reply from full control activation'
         ]);
     }
+
+    public function test_suggest_reply_returns_suggestion_when_last_sender_is_customer()
+    {
+        $geminiMock = Mockery::mock(GeminiService::class);
+        $geminiMock->shouldReceive('generateReply')
+            ->once()
+            ->andReturn('Hello human suggestion');
+        $this->app->instance(GeminiService::class, $geminiMock);
+
+        $channel = Channel::create(['name' => 'Telegram', 'type' => 'telegram']);
+        $customer = Customer::create([
+            'external_id' => '12345',
+            'channel_id' => $channel->id,
+            'name' => 'Test Customer'
+        ]);
+
+        $conversation = Conversation::create([
+            'company_id' => null,
+            'customer_id' => $customer->id,
+            'channel_id' => $channel->id,
+            'status' => 'waiting_admin',
+            'unread_count' => 1
+        ]);
+
+        $conversation->messages()->create([
+            'sender_type' => 'customer',
+            'message_type' => 'text',
+            'message' => 'Help me please'
+        ]);
+
+        $response = $this->getJson("/api/conversations/{$conversation->id}/suggest");
+        $response->assertStatus(200)
+            ->assertJson(['suggestion' => 'Hello human suggestion']);
+    }
+
+    public function test_suggest_reply_returns_empty_when_last_sender_is_not_customer()
+    {
+        $geminiMock = Mockery::mock(GeminiService::class);
+        $geminiMock->shouldNotReceive('generateReply');
+        $this->app->instance(GeminiService::class, $geminiMock);
+
+        $channel = Channel::create(['name' => 'Telegram', 'type' => 'telegram']);
+        $customer = Customer::create([
+            'external_id' => '12345',
+            'channel_id' => $channel->id,
+            'name' => 'Test Customer'
+        ]);
+
+        $conversation = Conversation::create([
+            'company_id' => null,
+            'customer_id' => $customer->id,
+            'channel_id' => $channel->id,
+            'status' => 'waiting_customer',
+            'unread_count' => 0
+        ]);
+
+        // Last message sender is AI/admin
+        $conversation->messages()->create([
+            'sender_type' => 'ai',
+            'message_type' => 'text',
+            'message' => 'Hello AI message'
+        ]);
+
+        $response = $this->getJson("/api/conversations/{$conversation->id}/suggest");
+        $response->assertStatus(200)
+            ->assertJson(['suggestion' => '']);
+    }
 }

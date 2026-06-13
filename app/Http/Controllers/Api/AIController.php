@@ -19,6 +19,12 @@ class AIController extends Controller
     public function suggestReply(Request $request, $conversationId)
     {
         $conversation = Conversation::findOrFail($conversationId);
+        
+        $lastMessage = $conversation->messages()->orderBy('created_at', 'desc')->first();
+        if (!$lastMessage || $lastMessage->sender_type !== 'customer') {
+            return response()->json(['suggestion' => '']);
+        }
+
         $suggestion = $this->gemini->generateReply($conversation);
         return response()->json(['suggestion' => $suggestion]);
     }
