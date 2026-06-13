@@ -18,7 +18,9 @@ Route::get('/knowledge-base', [KnowledgeBaseController::class, 'index']);
 Route::post('/knowledge-base', [KnowledgeBaseController::class, 'store']);
 Route::delete('/knowledge-base/{id}', [KnowledgeBaseController::class, 'destroy']);
 Route::get('/products', [\App\Http\Controllers\Api\ProductController::class, 'index']);
+Route::get('/products/template', [\App\Http\Controllers\Api\ProductController::class, 'downloadTemplate']);
 Route::post('/products', [\App\Http\Controllers\Api\ProductController::class, 'store']);
+Route::post('/products/import', [\App\Http\Controllers\Api\ProductController::class, 'import']);
 Route::put('/products/{id}', [\App\Http\Controllers\Api\ProductController::class, 'update']);
 Route::delete('/products/{id}', [\App\Http\Controllers\Api\ProductController::class, 'destroy']);
 

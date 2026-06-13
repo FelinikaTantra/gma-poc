@@ -16,6 +16,50 @@ const SettingsView = () => {
         external_product_id: '',
         compatibilities: [{ brand: '', model: '', year: '' }]
     });
+    const [importing, setImporting] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+
+    const handleFileChange = (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setSelectedFile(e.target.files[0]);
+        } else {
+            setSelectedFile(null);
+        }
+    };
+
+    const importCsv = () => {
+        if (!selectedFile) {
+            alert('Please select a CSV file first.');
+            return;
+        }
+        setImporting(true);
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        fetch('/api/products/import', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(data => {
+                    throw new Error(data.message || 'Import failed.');
+                });
+            }
+            return res.json();
+        })
+        .then(data => {
+            setImporting(false);
+            setSelectedFile(null);
+            refetchProducts();
+            alert(data.message || 'Products imported successfully!');
+        })
+        .catch(err => {
+            setImporting(false);
+            console.error(err);
+            alert(`Failed to import products: ${err.message}`);
+        });
+    };
 
     const handleCompatibilityChange = (index, field, value) => {
         const newCompatibilities = [...productForm.compatibilities];
@@ -107,7 +151,7 @@ const SettingsView = () => {
 
     useEffect(() => {
         lucide.createIcons();
-    }, [activeTab, kbData, settingsData]);
+    }, [activeTab, kbData, settingsData, productsData, masterSubTab]);
 
     useEffect(() => {
         if (settingsData && settingsData.channels) {
@@ -291,6 +335,26 @@ const SettingsView = () => {
 
                         {masterSubTab === 'products' ? (
                             <div>
+                                <div className="card" style=@{{marginBottom: '1.5rem'}}>
+                                    <div className="card-title">Bulk Import Products</div>
+                                    <div style=@{{display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap'}}>
+                                        <div style=@{{flex: 1, minWidth: '200px'}}>
+                                            <div style=@{{fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem'}}>
+                                                Download the CSV template, fill in product catalog details, and upload the file to import products in bulk.
+                                            </div>
+                                            <a href="/api/products/template" className="btn" style=@{{display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.1)', textDecoration: 'none', color: 'white', border: '1px solid rgba(255,255,255,0.1)'}} download>
+                                                <i data-lucide="download" style=@{{width: 16, height: 16, marginRight: 8}}></i> Download CSV Template
+                                            </a>
+                                        </div>
+                                        <div style=@{{flex: 1, minWidth: '200px', borderLeft: '1px solid rgba(255,255,255,0.05)', paddingLeft: '1rem'}}>
+                                            <label style=@{{fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.5rem'}}>Upload CSV File</label>
+                                            <input type="file" accept=".csv" className="form-control" onChange={handleFileChange} style=@{{padding: '0.35rem', fontSize: '0.85rem'}} />
+                                            <button className="btn" style=@{{marginTop: '0.75rem', width: '100%'}} onClick={importCsv} disabled={importing || !selectedFile}>
+                                                {importing ? 'Importing & Generating Vectors...' : 'Upload & Import'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="card">
                                     <div className="card-title">{productForm.id ? 'Edit Product' : 'Add Product'}</div>
                                     <div className="form-group">

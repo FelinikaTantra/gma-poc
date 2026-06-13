@@ -170,4 +170,84 @@ class ProductCrudTest extends TestCase
             'id' => $product->id
         ]);
     }
+
+    public function test_can_download_csv_template()
+    {
+        $response = $this->get('/api/products/template');
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('name,price,stock,external_product_id,compatibilities', $content);
+        $this->assertStringContainsString('Spion Carbon NMAX/XMAX', $content);
+    }
+
+    public function test_can_import_products_from_csv()
+    {
+        // Mock OpenAI Embeddings
+        Http::fake([
+            'api.openai.com/v1/embeddings' => Http::response([
+                'data' => [
+                    [
+                        'embedding' => [0.5, 0.6, 0.7]
+                    ]
+                ]
+            ], 200)
+        ]);
+
+        // Create temporary CSV file content
+        $csvContent = "name,price,stock,external_product_id,compatibilities\n";
+        $csvContent .= "Kampas Rem Depan,50000,10,KMP-101,\"Honda:Vario:2020-2023;Yamaha:NMAX:2021\"\n";
+        $csvContent .= "Oli Shell Matic,80000,5,OLI-202,\"Universal:Matic:All\"\n";
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'csv_test_');
+        file_put_contents($tempFile, $csvContent);
+
+        $uploadedFile = new \Illuminate\Http\UploadedFile(
+            $tempFile,
+            'products.csv',
+            'text/csv',
+            null,
+            true
+        );
+
+        $response = $this->postJson('/api/products/import', [
+            'file' => $uploadedFile
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'count' => 2
+            ]);
+
+        // Check if database records were inserted
+        $this->assertDatabaseHas('products', [
+            'name' => 'Kampas Rem Depan',
+            'price' => 50000,
+            'stock' => 10,
+            'external_product_id' => 'KMP-101'
+        ]);
+
+        $this->assertDatabaseHas('products', [
+            'name' => 'Oli Shell Matic',
+            'price' => 80000,
+            'stock' => 5,
+            'external_product_id' => 'OLI-202'
+        ]);
+
+        // Check compatibility mapping
+        $this->assertDatabaseHas('product_compatibility', [
+            'vehicle_brand' => 'Honda',
+            'vehicle_model' => 'Vario',
+            'vehicle_year' => '2020-2023'
+        ]);
+
+        // Check if vector was generated and saved
+        $product = Product::where('external_product_id', 'KMP-101')->first();
+        $this->assertEquals([0.5, 0.6, 0.7], $product->vector);
+
+        unlink($tempFile);
+    }
 }
