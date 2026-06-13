@@ -262,7 +262,7 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
     {
         $setting = \App\Models\AiSetting::first();
         $model = ($setting && str_contains($setting->model, 'gpt')) ? $setting->model : 'gpt-4o-mini';
-        $temperature = $setting ? $setting->temperature : 0.7;
+        $temperature = $setting ? (float)$setting->temperature : 0.7;
         $tokenUsage = 0;
 
         try {
@@ -304,7 +304,7 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
     {
         $setting = \App\Models\AiSetting::first();
         $model = ($setting && str_contains($setting->model, 'gpt')) ? $setting->model : 'gpt-4o-mini';
-        $temperature = $setting ? $setting->temperature : 0.1;
+        $temperature = $setting ? (float)$setting->temperature : 0.1;
         $tokenUsage = 0;
 
         try {
