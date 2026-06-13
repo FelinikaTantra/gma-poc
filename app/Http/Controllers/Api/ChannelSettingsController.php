@@ -35,7 +35,7 @@ class ChannelSettingsController extends Controller
     public function updateChannel(Request $request, $id)
     {
         $channel = Channel::findOrFail($id);
-        $channel->update($request->only(['app_id', 'secret', 'token', 'webhook_url', 'status']));
+        $channel->update($request->only(['app_id', 'secret', 'token', 'webhook_url', 'status', 'config_json']));
         return response()->json($channel);
     }
 

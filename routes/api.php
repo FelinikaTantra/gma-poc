@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\Api\KnowledgeBaseController;
 use App\Http\Controllers\Api\ChannelSettingsController;
 use App\Http\Controllers\Api\ChatController;
@@ -45,3 +46,28 @@ Route::put('/roles/matrix', [UserRoleController::class, 'rolesUpdateMatrix']);
 
 // Webhook
 Route::post('/webhooks/telegram', [\App\Http\Controllers\Api\WebhookController::class, 'telegram']);
+
+Route::post('/telegram/webhook', function (Request $request) {
+    $channel = \App\Models\Channel::where('type', 'telegram')->first();
+    $token = ($channel && isset($channel->config_json['bot_token'])) ? $channel->config_json['bot_token'] : env('TELEGRAM_BOT_TOKEN');
+
+    if (!$request->has('message.chat.id') || !$request->has('message.text')) {
+        return response()->json(['status' => 'ignored']);
+    }
+
+    $chatId = $request->input('message.chat.id');
+    $text = $request->input('message.text');
+
+    if ($text == '/status') {
+        Http::post(
+            "https://api.telegram.org/bot{$token}/sendMessage",
+            [
+                'chat_id' => $chatId,
+                'text' => 'System Online'
+            ]
+        );
+    }
+
+    return response()->json(['status' => 'ok']);
+});
+

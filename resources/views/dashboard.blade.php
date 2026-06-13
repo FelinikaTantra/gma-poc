@@ -62,9 +62,24 @@
             // Channels & AI Settings state
             const { data: settingsData, refetch: refetchSettings } = useApi('/api/settings');
 
+            // Telegram state
+            const [botToken, setBotToken] = useState('');
+            const [botUsername, setBotUsername] = useState('');
+
             useEffect(() => {
                 lucide.createIcons();
             }, [activeTab, kbData, settingsData]);
+
+            useEffect(() => {
+                if (settingsData && settingsData.channels) {
+                    const tg = settingsData.channels.find(c => c.name === 'Telegram' || c.type === 'telegram');
+                    if (tg) {
+                        const config = tg.config_json || {};
+                        setBotToken(config.bot_token || '');
+                        setBotUsername(config.username || '');
+                    }
+                }
+            }, [settingsData]);
 
             const saveKb = () => {
                 fetch('/api/knowledge-base', {
@@ -85,9 +100,31 @@
                 }).then(() => refetchSettings());
             };
 
-            const updateChannel = (id, field, value) => {
-                // For simplicity, we just send all current values with the updated field
-                // In a real app we'd manage form state per channel
+            const saveTelegramChannel = () => {
+                if (!settingsData) return;
+                const tg = settingsData.channels.find(c => c.name === 'Telegram' || c.type === 'telegram');
+                if (!tg) return;
+
+                fetch(`/api/settings/channel/${tg.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        status: 'Connected',
+                        config_json: {
+                            bot_token: botToken,
+                            username: botUsername
+                        }
+                    })
+                })
+                .then(res => res.json())
+                .then(() => {
+                    alert('Telegram bot configuration saved successfully!');
+                    refetchSettings();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Failed to save Telegram bot configuration.');
+                });
             };
 
             return (
@@ -152,19 +189,19 @@
                                     <div style=@{{display: 'grid', gridTemplateColumns: '1fr', gap: '1rem'}}>
                                         <div>
                                             <label style=@{{fontSize: '0.75rem', color: '#94a3b8'}}>Bot Token</label>
-                                            <input type="password" className="form-control" style=@{{padding: '0.5rem', fontSize: '0.875rem'}} defaultValue="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ" />
+                                            <input type="password" className="form-control" style=@{{padding: '0.5rem', fontSize: '0.875rem'}} value={botToken} onChange={e => setBotToken(e.target.value)} />
                                         </div>
                                         <div>
                                             <label style=@{{fontSize: '0.75rem', color: '#94a3b8'}}>Bot Username</label>
-                                            <input type="text" className="form-control" style=@{{padding: '0.5rem', fontSize: '0.875rem'}} defaultValue="@omnichat_bot" />
+                                            <input type="text" className="form-control" style=@{{padding: '0.5rem', fontSize: '0.875rem'}} value={botUsername} onChange={e => setBotUsername(e.target.value)} />
                                         </div>
                                         <div>
                                             <label style=@{{fontSize: '0.75rem', color: '#94a3b8'}}>Webhook URL</label>
-                                            <input type="text" className="form-control" style=@{{padding: '0.5rem', fontSize: '0.875rem'}} defaultValue="https://gma.com/api/webhook/telegram" readOnly />
+                                            <input type="text" className="form-control" style=@{{padding: '0.5rem', fontSize: '0.875rem'}} value={window.location.origin + '/api/telegram/webhook'} readOnly />
                                         </div>
                                     </div>
                                     <div style=@{{marginTop: '1rem', display: 'flex', gap: '0.5rem'}}>
-                                        <button className="btn">Save</button>
+                                        <button className="btn" onClick={saveTelegramChannel}>Save</button>
                                         <button className="btn" style=@{{background: 'rgba(255,255,255,0.1)'}}>Test Connection</button>
                                     </div>
                                 </div>
