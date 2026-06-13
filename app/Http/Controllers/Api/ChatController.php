@@ -77,6 +77,14 @@ class ChatController extends Controller
 
         if ($validated['sender'] === 'admin') {
             $conversation->update(['status' => 'open', 'last_message_at' => now(), 'unread_count' => 0]);
+
+            // Forward reply to external channel (e.g. Telegram)
+            $channel = $conversation->channel;
+            if ($channel && $channel->type === 'telegram') {
+                $adapter = new \App\Adapters\TelegramAdapter();
+                $config = $channel->config_json ?? [];
+                $adapter->sendReply($conversation->customer->external_id, $validated['message'], $config);
+            }
         }
 
         return response()->json($message, 201);
