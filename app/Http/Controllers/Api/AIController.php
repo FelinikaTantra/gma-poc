@@ -26,7 +26,8 @@ class AIController extends Controller
     public function generateSummary(Request $request, $conversationId)
     {
         $conversation = Conversation::findOrFail($conversationId);
-        $summary = $this->gemini->generateSummary($conversation);
+        $force = $request->boolean('force');
+        $summary = $this->gemini->generateSummary($conversation, $force);
         return response()->json(['summary' => $summary]);
     }
 }

@@ -115,4 +115,169 @@ class AiServiceTest extends TestCase
                 $request->hasHeader('Authorization', 'Bearer mock-openai-token');
         });
     }
+
+    public function test_generate_summary_fails_when_no_keys_are_configured()
+    {
+        putenv('GEMINI_API_KEY=');
+        // Ensure openai_token is null
+        AiSetting::first()->update(['openai_token' => null]);
+
+        $result = $this->service->generateSummary($this->conversation);
+        $this->assertEquals("API Key belum dikonfigurasi untuk ringkasan.", $result);
+    }
+
+    public function test_generate_summary_fails_when_less_than_two_messages()
+    {
+        putenv('GEMINI_API_KEY=mock-gemini-key');
+
+        // 0 messages
+        $result = $this->service->generateSummary($this->conversation);
+        $this->assertEquals("Belum ada percakapan yang cukup untuk dirangkum.", $result);
+
+        // 1 message
+        $this->conversation->messages()->create([
+            'message' => 'Hello',
+            'sender_type' => 'customer'
+        ]);
+
+        $result = $this->service->generateSummary($this->conversation);
+        $this->assertEquals("Belum ada percakapan yang cukup untuk dirangkum.", $result);
+    }
+
+    public function test_generate_summary_uses_cache_when_force_is_false()
+    {
+        putenv('GEMINI_API_KEY=mock-gemini-key');
+
+        // Create 2 messages
+        $msg1 = $this->conversation->messages()->create([
+            'message' => 'Hello',
+            'sender_type' => 'customer',
+            'created_at' => now()->subMinutes(10),
+            'updated_at' => now()->subMinutes(10),
+        ]);
+        $msg2 = $this->conversation->messages()->create([
+            'message' => 'I need help',
+            'sender_type' => 'customer',
+            'created_at' => now()->subMinutes(9),
+            'updated_at' => now()->subMinutes(9),
+        ]);
+
+        // Fake sequential responses
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push([
+                    'candidates' => [
+                        [
+                            'content' => [
+                                'parts' => [
+                                    ['text' => json_encode([
+                                        'topic' => 'Help request',
+                                        'status' => 'Pending',
+                                        'next_action' => 'Reply to customer'
+                                    ])]
+                                ]
+                            ]
+                        ]
+                    ],
+                    'usageMetadata' => ['totalTokenCount' => 10]
+                ], 200)
+                ->push([
+                    'candidates' => [
+                        [
+                            'content' => [
+                                'parts' => [
+                                    ['text' => json_encode([
+                                        'topic' => 'New topic',
+                                        'status' => 'Resolved',
+                                        'next_action' => 'None'
+                                    ])]
+                                ]
+                            ]
+                        ]
+                    ],
+                    'usageMetadata' => ['totalTokenCount' => 10]
+                ], 200)
+        ]);
+
+        // First generation (uncached)
+        $result1 = $this->service->generateSummary($this->conversation, false);
+        $this->assertStringContainsString('Topik: Help request', $result1);
+
+        // Verify it was stored in db
+        $this->assertDatabaseHas('conversation_summaries', [
+            'conversation_id' => $this->conversation->id,
+            'summary' => $result1
+        ]);
+
+        // Call again with force=false, should return cached (doesn't trigger HTTP request)
+        $result2 = $this->service->generateSummary($this->conversation, false);
+        $this->assertEquals($result1, $result2);
+        $this->assertStringContainsString('Topik: Help request', $result2);
+    }
+
+    public function test_generate_summary_bypasses_cache_when_force_is_true()
+    {
+        putenv('GEMINI_API_KEY=mock-gemini-key');
+
+        // Create 2 messages
+        $msg1 = $this->conversation->messages()->create([
+            'message' => 'Hello',
+            'sender_type' => 'customer',
+            'created_at' => now()->subMinutes(10),
+            'updated_at' => now()->subMinutes(10),
+        ]);
+        $msg2 = $this->conversation->messages()->create([
+            'message' => 'I need help',
+            'sender_type' => 'customer',
+            'created_at' => now()->subMinutes(9),
+            'updated_at' => now()->subMinutes(9),
+        ]);
+
+        // Fake sequential responses
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push([
+                    'candidates' => [
+                        [
+                            'content' => [
+                                'parts' => [
+                                    ['text' => json_encode([
+                                        'topic' => 'Help request',
+                                        'status' => 'Pending',
+                                        'next_action' => 'Reply to customer'
+                                    ])]
+                                ]
+                            ]
+                        ]
+                    ],
+                    'usageMetadata' => ['totalTokenCount' => 10]
+                ], 200)
+                ->push([
+                    'candidates' => [
+                        [
+                            'content' => [
+                                'parts' => [
+                                    ['text' => json_encode([
+                                        'topic' => 'New topic',
+                                        'status' => 'Resolved',
+                                        'next_action' => 'None'
+                                    ])]
+                                ]
+                            ]
+                        ]
+                    ],
+                    'usageMetadata' => ['totalTokenCount' => 10]
+                ], 200)
+        ]);
+
+        // First generation (uncached)
+        $result1 = $this->service->generateSummary($this->conversation, false);
+        $this->assertStringContainsString('Topik: Help request', $result1);
+
+        // Call again with force=true, should bypass cache and fetch new (triggers sequence's 2nd response)
+        $result2 = $this->service->generateSummary($this->conversation, true);
+        $this->assertNotEquals($result1, $result2);
+        $this->assertStringContainsString('Topik: New topic', $result2);
+    }
 }
+

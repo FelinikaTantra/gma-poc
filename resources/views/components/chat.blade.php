@@ -95,6 +95,22 @@ const ChatView = () => {
             .catch(() => setLoadingSuggest(false));
     };
 
+    const triggerSummary = () => {
+        if (!selectedChat) return;
+        setLoadingSummary(true);
+        fetch(`/api/conversations/${selectedChat}/summary?force=true`)
+            .then(res => res.json())
+            .then(data => {
+                setAiSummary(data.summary);
+                setLoadingSummary(false);
+            })
+            .catch(err => {
+                console.error(err);
+                setLoadingSummary(false);
+                alert('Failed to generate summary.');
+            });
+    };
+
     const filteredInbox = inbox ? inbox.filter(c => {
         if (chatFilter === 'Waiting Admin') return c.status === 'waiting_admin' || c.status === 'pending';
         if (chatFilter === 'Waiting Customer') return c.status === 'waiting_customer';
@@ -216,6 +232,7 @@ const ChatView = () => {
                                         </div>
                                         <div style=@{{display: 'flex', gap: '0.5rem'}}>
                                             <button onClick={() => { setInput(aiSuggestion); setAiSuggestion(''); }} style=@{{flex: 1, background: 'transparent', color: '#93c5fd', border: '1px solid rgba(59, 130, 246, 0.5)', padding: '0.4rem', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.75rem'}}>Edit</button>
+                                            <button onClick={() => setAiSuggestion('')} style=@{{flex: 1, background: 'transparent', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.5)', padding: '0.4rem', borderRadius: '0.25rem', cursor: 'pointer', fontSize: '0.75rem'}}>Cancel</button>
                                             <button onClick={() => { 
                                                 fetch(`/api/messages/send`, {
                                                     method: 'POST',
@@ -290,9 +307,14 @@ const ChatView = () => {
                             <>
                                 {/* AI Summary Section */}
                         <div style=@{{marginBottom: '2rem'}}>
-                            <div style=@{{fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Conversation Summary</div>
+                            <div style=@{{fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <span>Conversation Summary</span>
+                                <button className="btn" style=@{{padding: '0.2rem 0.5rem', fontSize: '0.7rem', background: 'rgba(255,255,255,0.1)', border: 'none'}} onClick={triggerSummary} disabled={loadingSummary}>
+                                    {loadingSummary ? 'Summarizing...' : 'Summarize Chat'}
+                                </button>
+                            </div>
                             {loadingSummary && <div style=@{{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Generating...</div>}
-                            {aiSummary && (
+                            {aiSummary && !loadingSummary && (
                                 <div style=@{{background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '1rem', borderRadius: '0.5rem', color: '#93c5fd', fontSize: '0.875rem', lineHeight: '1.5', whiteSpace: 'pre-line'}}>
                                     {aiSummary}
                                 </div>

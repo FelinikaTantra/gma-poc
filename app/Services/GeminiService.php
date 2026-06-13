@@ -163,7 +163,7 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
         ];
     }
 
-    public function generateSummary(Conversation $conversation)
+    public function generateSummary(Conversation $conversation, bool $force = false)
     {
         $openAiToken = $this->getOpenAiToken();
         $apiKey = $this->getApiKey();
@@ -181,7 +181,7 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
         $latestMsg = $messages->last();
         $cached = ConversationSummary::where('conversation_id', $conversation->id)->first();
         
-        if ($cached && $cached->updated_at >= $latestMsg->created_at) {
+        if (!$force && $cached && $cached->updated_at >= $latestMsg->created_at) {
             return $cached->summary;
         }
 
