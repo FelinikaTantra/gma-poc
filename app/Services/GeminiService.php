@@ -38,6 +38,15 @@ class GeminiService
         // Priority 3: Product Data / Company Profile
         $products = KnowledgeBase::whereIn('category', ['Product Catalog', 'Company Profile'])->get();
 
+        // Get customer's last message as query for RAG
+        $lastCustomerMessage = $conversation->messages()
+            ->where('sender_type', 'customer')
+            ->orderBy('created_at', 'desc')
+            ->value('message') ?? '';
+
+        // Add Dynamic Product Data from DB via Vector Search
+        $dbProducts = $this->getRelevantProducts($lastCustomerMessage, 3);
+
         $context = "You are a customer service representative. Answer the customer concisely and politely based ONLY on the following prioritized information:\n\n";
         
         $context .= "[PRIORITY 1: SOP]\n";
@@ -49,11 +58,17 @@ class GeminiService
         $context .= "\n[PRIORITY 3: PRODUCT & COMPANY INFO]\n";
         foreach ($products as $item) $context .= "- {$item->title}: {$item->content}\n";
 
+        $context .= "\n[PRIORITY 4: LIVE PRODUCT CATALOG (PRICE, STOCK, COMPATIBILITY)]\n";
+        foreach ($dbProducts as $prod) {
+            $compats = $prod->productCompatibilities->map(fn($c) => "{$c->vehicle_brand} {$c->vehicle_model} ({$c->vehicle_year})")->implode(', ');
+            $context .= "- {$prod->name} (Rp" . number_format($prod->price, 0, ',', '.') . ") | Stock: {$prod->stock} | Compatibility: {$compats}\n";
+        }
+
         $context .= "\nIf the answer is not in the data above, politely ask the customer to wait for an admin to assist them. DO NOT make up information.\n\n";
 
-        // Priority 4: Chat History
+        // Priority 5: Chat History
         $messages = $conversation->messages()->orderBy('created_at', 'asc')->get();
-        $historyText = "[PRIORITY 4: CHAT HISTORY]\n";
+        $historyText = "[PRIORITY 5: CHAT HISTORY]\n";
         foreach ($messages as $msg) {
             $historyText .= ucfirst($msg->sender_type) . ": " . $msg->message . "\n";
         }
@@ -85,8 +100,14 @@ class GeminiService
         $faqs = Faq::all();
         $kbProducts = KnowledgeBase::whereIn('category', ['Product Catalog', 'Company Profile'])->get();
         
-        // Add Dynamic Product Data from DB
-        $dbProducts = \App\Models\Product::with('productCompatibilities')->get();
+        // Get customer's last message as query for RAG
+        $lastCustomerMessage = $conversation->messages()
+            ->where('sender_type', 'customer')
+            ->orderBy('created_at', 'desc')
+            ->value('message') ?? '';
+
+        // Add Dynamic Product Data from DB via Vector Search
+        $dbProducts = $this->getRelevantProducts($lastCustomerMessage, 3);
 
         $context = "You are a customer service representative. Answer the customer concisely and politely based ONLY on the following prioritized information:\n\n";
         
@@ -377,5 +398,77 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
         }
 
         return null;
+    }
+
+    private function cosineSimilarity(array $vecA, array $vecB): float
+    {
+        $dotProduct = 0;
+        $normA = 0;
+        $normB = 0;
+        
+        $count = min(count($vecA), count($vecB));
+        for ($i = 0; $i < $count; $i++) {
+            $dotProduct += $vecA[$i] * $vecB[$i];
+            $normA += $vecA[$i] * $vecA[$i];
+            $normB += $vecB[$i] * $vecB[$i];
+        }
+        
+        if ($normA == 0 || $normB == 0) {
+            return 0;
+        }
+        
+        return $dotProduct / (sqrt($normA) * sqrt($normB));
+    }
+
+    public function getRelevantProducts(string $queryText, int $limit = 5): array
+    {
+        if (empty(trim($queryText))) {
+            return \App\Models\Product::with('productCompatibilities')->take($limit)->get()->all();
+        }
+
+        $queryVector = $this->generateEmbedding($queryText);
+        if (!$queryVector) {
+            return \App\Models\Product::with('productCompatibilities')->take($limit)->get()->all();
+        }
+
+        $products = \App\Models\Product::with('productCompatibilities')
+            ->whereNotNull('vector')
+            ->get();
+
+        $scoredProducts = [];
+        foreach ($products as $product) {
+            $productVector = $product->vector;
+            if (is_array($productVector) && count($productVector) > 0) {
+                $similarity = $this->cosineSimilarity($queryVector, $productVector);
+                $scoredProducts[] = [
+                    'product' => $product,
+                    'similarity' => $similarity
+                ];
+            }
+        }
+
+        usort($scoredProducts, function ($a, $b) {
+            return $b['similarity'] <=> $a['similarity'];
+        });
+
+        $results = [];
+        foreach ($scoredProducts as $item) {
+            if ($item['similarity'] >= 0.35) {
+                $results[] = $item['product'];
+            }
+            if (count($results) >= $limit) {
+                break;
+            }
+        }
+
+        if (empty($results) && !empty($scoredProducts)) {
+            $results[] = $scoredProducts[0]['product'];
+        }
+
+        if (empty($results)) {
+            return \App\Models\Product::with('productCompatibilities')->take($limit)->get()->all();
+        }
+
+        return $results;
     }
 }
