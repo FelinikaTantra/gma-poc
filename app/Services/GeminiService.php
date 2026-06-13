@@ -47,7 +47,11 @@ class GeminiService
         // Add Dynamic Product Data from DB via Vector Search
         $dbProducts = $this->getRelevantProducts($lastCustomerMessage, 3);
 
-        $context = "You are a customer service representative. Answer the customer concisely and politely based ONLY on the following prioritized information:\n\n";
+        $setting = \App\Models\AiSetting::first();
+        $personality = ($setting && $setting->personality) ? $setting->personality : "You are a customer service representative.";
+        $briefing = ($setting && $setting->briefing) ? $setting->briefing : "Answer the customer concisely and politely based ONLY on the following prioritized information:";
+
+        $context = "AI Personality: {$personality}\nAI Briefing: {$briefing}\n\n";
         
         $context .= "[PRIORITY 1: SOP]\n";
         foreach ($sop as $item) $context .= "- {$item->title}: {$item->content}\n";
@@ -109,7 +113,11 @@ class GeminiService
         // Add Dynamic Product Data from DB via Vector Search
         $dbProducts = $this->getRelevantProducts($lastCustomerMessage, 3);
 
-        $context = "You are a customer service representative. Answer the customer concisely and politely based ONLY on the following prioritized information:\n\n";
+        $setting = \App\Models\AiSetting::first();
+        $personality = ($setting && $setting->personality) ? $setting->personality : "You are a customer service representative.";
+        $briefing = ($setting && $setting->briefing) ? $setting->briefing : "Answer the customer concisely and politely based ONLY on the following prioritized information:";
+
+        $context = "AI Personality: {$personality}\nAI Briefing: {$briefing}\n\n";
         
         $context .= "[PRIORITY 1: SOP]\n";
         foreach ($sop as $item) $context .= "- {$item->title}: {$item->content}\n";

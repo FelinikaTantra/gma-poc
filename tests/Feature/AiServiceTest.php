@@ -279,5 +279,42 @@ class AiServiceTest extends TestCase
         $this->assertNotEquals($result1, $result2);
         $this->assertStringContainsString('Topik: New topic', $result2);
     }
+
+    public function test_ai_uses_custom_personality_and_briefing_in_prompts()
+    {
+        putenv('GEMINI_API_KEY=mock-gemini-key');
+
+        // Update settings in database
+        AiSetting::first()->update([
+            'personality' => 'Anda adalah agen ramah dengan dialek Jakarta.',
+            'briefing' => 'Jawab dengan singkat dan gunakan kata "Gue" dan "Lu".'
+        ]);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [
+                    [
+                        'content' => [
+                            'parts' => [
+                                ['text' => 'Halo bro! Ada yang bisa gue bantu buat lu?']
+                            ]
+                        ]
+                    ]
+                ],
+                'usageMetadata' => ['totalTokenCount' => 10]
+            ], 200)
+        ]);
+
+        $result = $this->service->generateReply($this->conversation);
+        $this->assertEquals("Halo bro! Ada yang bisa gue bantu buat lu?", $result);
+
+        // Verify that the prompt sent to Gemini contains the personality and briefing
+        Http::assertSent(function ($request) {
+            $body = json_decode($request->body(), true);
+            $promptText = $body['contents'][0]['parts'][0]['text'] ?? '';
+            return str_contains($promptText, 'Anda adalah agen ramah dengan dialek Jakarta.') &&
+                str_contains($promptText, 'Jawab dengan singkat dan gunakan kata "Gue" dan "Lu".');
+        });
+    }
 }
 

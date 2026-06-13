@@ -44,16 +44,17 @@ class ChannelSettingsController extends Controller
         $aiSetting = AiSetting::first();
         $isEnablingFullControl = $request->boolean('full_control') && (!$aiSetting || !$aiSetting->full_control);
 
+        $data = [
+            'full_control' => $request->boolean('full_control'),
+            'openai_token' => $request->input('openai_token'),
+            'personality' => $request->input('personality'),
+            'briefing' => $request->input('briefing')
+        ];
+
         if (!$aiSetting) {
-            $aiSetting = AiSetting::create([
-                'full_control' => $request->boolean('full_control'),
-                'openai_token' => $request->input('openai_token')
-            ]);
+            $aiSetting = AiSetting::create($data);
         } else {
-            $aiSetting->update([
-                'full_control' => $request->boolean('full_control'),
-                'openai_token' => $request->input('openai_token')
-            ]);
+            $aiSetting->update($data);
         }
 
         if ($isEnablingFullControl) {

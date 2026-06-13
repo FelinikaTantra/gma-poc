@@ -149,6 +149,10 @@ const SettingsView = () => {
     // OpenAI state
     const [openAiToken, setOpenAiToken] = useState('');
 
+    // AI Personality & Briefing state
+    const [personality, setPersonality] = useState('');
+    const [briefing, setBriefing] = useState('');
+
     useEffect(() => {
         lucide.createIcons();
     }, [activeTab, kbData, settingsData, productsData, masterSubTab]);
@@ -164,6 +168,8 @@ const SettingsView = () => {
         }
         if (settingsData && settingsData.ai_setting) {
             setOpenAiToken(settingsData.ai_setting.openai_token || '');
+            setPersonality(settingsData.ai_setting.personality || '');
+            setBriefing(settingsData.ai_setting.briefing || '');
         }
     }, [settingsData]);
 
@@ -182,7 +188,12 @@ const SettingsView = () => {
         fetch('/api/settings/ai-toggle', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ full_control: val, openai_token: openAiToken })
+            body: JSON.stringify({ 
+                full_control: val, 
+                openai_token: openAiToken,
+                personality: personality,
+                briefing: briefing
+            })
         }).then(() => refetchSettings());
     };
 
@@ -192,7 +203,9 @@ const SettingsView = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 full_control: settingsData.ai_setting.full_control,
-                openai_token: openAiToken
+                openai_token: openAiToken,
+                personality: personality,
+                briefing: briefing
             })
         })
         .then(res => res.json())
@@ -549,11 +562,16 @@ const SettingsView = () => {
                                             return;
                                         }
                                     }
-                                    // Toggle full control immediately and preserve the current token value
+                                    // Toggle full control immediately and preserve the current token/personality/briefing values
                                     fetch('/api/settings/ai-toggle', {
                                         method: 'PUT',
                                         headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ full_control: checked, openai_token: openAiToken })
+                                        body: JSON.stringify({ 
+                                            full_control: checked, 
+                                            openai_token: openAiToken,
+                                            personality: personality,
+                                            briefing: briefing
+                                        })
                                     }).then(() => refetchSettings());
                                 }} />
                                 <span className="slider"></span>
@@ -568,6 +586,26 @@ const SettingsView = () => {
                                 value={openAiToken} 
                                 onChange={e => setOpenAiToken(e.target.value)} 
                                 placeholder="sk-proj-..."
+                            />
+                        </div>
+                        <div style=@{{marginBottom: '1.5rem'}}>
+                            <label style=@{{fontSize: '0.75rem', color: '#94a3b8'}}>AI Personality Description</label>
+                            <textarea 
+                                className="form-control" 
+                                style=@{{padding: '0.5rem', fontSize: '0.875rem', marginTop: '0.25rem', height: '80px', resize: 'vertical'}} 
+                                value={personality} 
+                                onChange={e => setPersonality(e.target.value)} 
+                                placeholder="E.g., Anda adalah perwakilan customer service yang ramah, sopan, dan suka membantu. Gunakan bahasa santai namun profesional."
+                            />
+                        </div>
+                        <div style=@{{marginBottom: '1.5rem'}}>
+                            <label style=@{{fontSize: '0.75rem', color: '#94a3b8'}}>AI Briefing / System Instructions</label>
+                            <textarea 
+                                className="form-control" 
+                                style=@{{padding: '0.5rem', fontSize: '0.875rem', marginTop: '0.25rem', height: '120px', resize: 'vertical'}} 
+                                value={briefing} 
+                                onChange={e => setBriefing(e.target.value)} 
+                                placeholder="E.g., Jawab pertanyaan customer secara singkat dan padat berdasarkan informasi produk yang ada. Jika produk tidak ditemukan di katalog, tawarkan produk alternatif yang mirip."
                             />
                         </div>
                         <div style=@{{display: 'flex', gap: '0.5rem', marginTop: '1rem'}}>
