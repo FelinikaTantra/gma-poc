@@ -128,4 +128,61 @@ class ConversationEngineTest extends TestCase
             'message' => 'Auto response from AI'
         ]);
     }
+
+    public function test_enabling_full_control_triggers_auto_replies_to_outstanding_conversations()
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'api.telegram.org/*' => \Illuminate\Support\Facades\Http::response(['ok' => true], 200)
+        ]);
+
+        $geminiMock = Mockery::mock(GeminiService::class);
+        $geminiMock->shouldReceive('generateReplyWithConfidence')
+            ->once()
+            ->andReturn([
+                'reply' => 'Auto reply from full control activation',
+                'confidence' => 95,
+                'source' => 'FAQ'
+            ]);
+        $this->app->instance(GeminiService::class, $geminiMock);
+
+        $channel = Channel::create(['name' => 'Telegram', 'type' => 'telegram']);
+        $customer = Customer::create([
+            'external_id' => '12345',
+            'channel_id' => $channel->id,
+            'name' => 'Test Customer'
+        ]);
+
+        $conversation = Conversation::create([
+            'company_id' => null,
+            'customer_id' => $customer->id,
+            'channel_id' => $channel->id,
+            'status' => 'waiting_admin',
+            'unread_count' => 1
+        ]);
+
+        $conversation->messages()->create([
+            'sender_type' => 'customer',
+            'message_type' => 'text',
+            'message' => 'Hello last message'
+        ]);
+
+        // Hit the API to enable full control
+        $response = $this->putJson('/api/settings/ai-toggle', [
+            'full_control' => true,
+            'openai_token' => null
+        ]);
+
+        $response->assertStatus(200);
+
+        // Verify conversation status is now waiting_customer and has 0 unread messages (as AI responded)
+        $conversation->refresh();
+        $this->assertEquals('waiting_customer', $conversation->status);
+        $this->assertEquals(0, $conversation->unread_count);
+
+        // Verify AI message was recorded in the database
+        $this->assertDatabaseHas('messages', [
+            'sender_type' => 'ai',
+            'message' => 'Auto reply from full control activation'
+        ]);
+    }
 }

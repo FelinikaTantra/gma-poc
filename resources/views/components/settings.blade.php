@@ -542,11 +542,18 @@ const SettingsView = () => {
                             </div>
                             <label className="toggle-switch">
                                 <input type="checkbox" checked={settingsData.ai_setting.full_control} onChange={e => {
+                                    const checked = e.target.checked;
+                                    if (checked) {
+                                        const confirmed = window.confirm("Apakah Anda yakin ingin mengaktifkan AI Full Control? AI akan langsung otomatis membalas semua chat masuk dan chat yang belum dibalas.");
+                                        if (!confirmed) {
+                                            return;
+                                        }
+                                    }
                                     // Toggle full control immediately and preserve the current token value
                                     fetch('/api/settings/ai-toggle', {
                                         method: 'PUT',
                                         headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ full_control: e.target.checked, openai_token: openAiToken })
+                                        body: JSON.stringify({ full_control: checked, openai_token: openAiToken })
                                     }).then(() => refetchSettings());
                                 }} />
                                 <span className="slider"></span>

@@ -42,12 +42,63 @@ class ChannelSettingsController extends Controller
     public function toggleAi(Request $request)
     {
         $aiSetting = AiSetting::first();
-        $aiSetting->update([
-            'full_control' => $request->boolean('full_control'),
-            'openai_token' => $request->input('openai_token')
-        ]);
+        $isEnablingFullControl = $request->boolean('full_control') && (!$aiSetting || !$aiSetting->full_control);
+
+        if (!$aiSetting) {
+            $aiSetting = AiSetting::create([
+                'full_control' => $request->boolean('full_control'),
+                'openai_token' => $request->input('openai_token')
+            ]);
+        } else {
+            $aiSetting->update([
+                'full_control' => $request->boolean('full_control'),
+                'openai_token' => $request->input('openai_token')
+            ]);
+        }
+
+        if ($isEnablingFullControl) {
+            $this->autoReplyOutstandingConversations();
+        }
+
         return response()->json($aiSetting);
     }
+
+    protected function autoReplyOutstandingConversations()
+    {
+        $conversations = \App\Models\Conversation::where('status', '!=', 'closed')->get();
+        $gemini = app(\App\Services\GeminiService::class);
+
+        foreach ($conversations as $conversation) {
+            $lastMessage = $conversation->messages()->orderBy('created_at', 'desc')->first();
+            if ($lastMessage && $lastMessage->sender_type === 'customer') {
+                $aiReplyData = $gemini->generateReplyWithConfidence($conversation);
+                
+                $conversation->messages()->create([
+                    'sender_type' => 'ai',
+                    'message_type' => 'text',
+                    'message' => $aiReplyData['reply']
+                ]);
+
+                $conversation->update([
+                    'status' => 'waiting_customer',
+                    'unread_count' => 0
+                ]);
+
+                $channel = $conversation->channel;
+                if ($channel) {
+                    if ($channel->type === 'telegram') {
+                        $adapter = new \App\Adapters\TelegramAdapter();
+                    } else {
+                        $adapter = new \App\Adapters\DummyAdapter();
+                    }
+                    
+                    $config = $channel->config_json ?? [];
+                    $adapter->sendReply($conversation->customer->external_id, $aiReplyData['reply'], $config);
+                }
+            }
+        }
+    }
+
 
     public function testTelegramConnection(Request $request)
     {
