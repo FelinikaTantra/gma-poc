@@ -28,7 +28,7 @@ class ConversationEngine
         // 2. Resolve Customer
         $customer = Customer::firstOrCreate(
             ['external_id' => $standardPayload['external_id'], 'channel_id' => $channel->id],
-            ['name' => $standardPayload['customer_name'], 'username' => $standardPayload['username'] ?? null]
+            ['name' => $standardPayload['customer_name'], 'username' => $standardPayload['username'] ?? null, 'company_id' => $channel->company_id]
         );
 
         // 3. Resolve Conversation

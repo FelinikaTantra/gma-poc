@@ -69,6 +69,14 @@ Route::post('/telegram/webhook', function (Request $request) {
         );
     }
 
+    // Process using ConversationEngine to save to DB / chat list
+    $adapter = new \App\Adapters\TelegramAdapter();
+    $payload = $adapter->parseWebhook($request);
+    if ($payload) {
+        $engine = app(\App\Engines\ConversationEngine::class);
+        $engine->handleIncoming($payload, $adapter);
+    }
+
     return response()->json(['status' => 'ok']);
 });
 
