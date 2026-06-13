@@ -263,24 +263,30 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
         $setting = \App\Models\AiSetting::first();
         $model = ($setting && str_contains($setting->model, 'gpt')) ? $setting->model : 'gpt-4o-mini';
         $temperature = $setting ? $setting->temperature : 0.7;
-
-        $response = Http::withToken($openAiToken)
-            ->post("https://api.openai.com/v1/chat/completions", [
-                'model' => $model,
-                'messages' => [
-                    ['role' => 'user', 'content' => $prompt]
-                ],
-                'temperature' => $temperature,
-                'max_tokens' => 800,
-            ]);
-
-        $responseText = "Maaf, terjadi kesalahan pada layanan AI.";
         $tokenUsage = 0;
 
-        if ($response->successful()) {
-            $data = $response->json();
-            $responseText = $data['choices'][0]['message']['content'] ?? "Gagal memproses respons AI.";
-            $tokenUsage = $data['usage']['total_tokens'] ?? 0;
+        try {
+            $response = Http::withToken($openAiToken)
+                ->post("https://api.openai.com/v1/chat/completions", [
+                    'model' => $model,
+                    'messages' => [
+                        ['role' => 'user', 'content' => $prompt]
+                    ],
+                    'temperature' => $temperature,
+                    'max_tokens' => 800,
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $responseText = $data['choices'][0]['message']['content'] ?? "Gagal memproses respons AI.";
+                $tokenUsage = $data['usage']['total_tokens'] ?? 0;
+            } else {
+                $body = $response->json();
+                $errorMsg = $body['error']['message'] ?? 'Unknown error';
+                $responseText = "Maaf, terjadi kesalahan pada layanan AI. OpenAI error: " . $errorMsg;
+            }
+        } catch (\Exception $e) {
+            $responseText = "Maaf, terjadi kesalahan pada layanan AI. Connection error: " . $e->getMessage();
         }
 
         // Write AI Log
@@ -299,25 +305,39 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
         $setting = \App\Models\AiSetting::first();
         $model = ($setting && str_contains($setting->model, 'gpt')) ? $setting->model : 'gpt-4o-mini';
         $temperature = $setting ? $setting->temperature : 0.1;
-
-        $response = Http::withToken($openAiToken)
-            ->post("https://api.openai.com/v1/chat/completions", [
-                'model' => $model,
-                'messages' => [
-                    ['role' => 'user', 'content' => $prompt]
-                ],
-                'temperature' => $temperature,
-                'max_tokens' => 800,
-                'response_format' => ['type' => 'json_object']
-            ]);
-
-        $responseText = "{}";
         $tokenUsage = 0;
 
-        if ($response->successful()) {
-            $data = $response->json();
-            $responseText = $data['choices'][0]['message']['content'] ?? "{}";
-            $tokenUsage = $data['usage']['total_tokens'] ?? 0;
+        try {
+            $response = Http::withToken($openAiToken)
+                ->post("https://api.openai.com/v1/chat/completions", [
+                    'model' => $model,
+                    'messages' => [
+                        ['role' => 'user', 'content' => $prompt]
+                    ],
+                    'temperature' => $temperature,
+                    'max_tokens' => 800,
+                    'response_format' => ['type' => 'json_object']
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $responseText = $data['choices'][0]['message']['content'] ?? "{}";
+                $tokenUsage = $data['usage']['total_tokens'] ?? 0;
+            } else {
+                $body = $response->json();
+                $errorMsg = $body['error']['message'] ?? 'Unknown error';
+                $responseText = json_encode([
+                    'reply' => "Maaf, terjadi kesalahan pada layanan AI. OpenAI error: " . $errorMsg,
+                    'confidence' => 0,
+                    'source_citation' => 'System'
+                ]);
+            }
+        } catch (\Exception $e) {
+            $responseText = json_encode([
+                'reply' => "Maaf, terjadi kesalahan pada layanan AI. Connection error: " . $e->getMessage(),
+                'confidence' => 0,
+                'source_citation' => 'System'
+            ]);
         }
 
         // Write AI Log
