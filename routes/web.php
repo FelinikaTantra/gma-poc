@@ -12,12 +12,19 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', function () {
+    Route::get('/dashboard/inbox', function () {
         return view('dashboard');
-    })->name('dashboard');
+    })->name('dashboard.inbox');
 
-    // Fallback for React Router in dashboard
-    Route::get('/dashboard/{any}', function () {
+    Route::get('/dashboard/settings', function () {
         return view('dashboard');
-    })->where('any', '.*');
+    })->name('dashboard.settings');
+
+    Route::get('/dashboard/users', function () {
+        return view('dashboard');
+    })->name('dashboard.users');
+
+    Route::get('/dashboard', function () {
+        return redirect()->route('dashboard.inbox');
+    })->name('dashboard');
 });

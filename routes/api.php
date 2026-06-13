@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\KnowledgeBaseController;
 use App\Http\Controllers\Api\ChannelSettingsController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AIController;
+use App\Http\Controllers\Api\UserRoleController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -35,6 +36,12 @@ Route::get('/quick-replies', [ChatController::class, 'getQuickReplies']);
 // AI API
 Route::get('/conversations/{id}/suggest', [AIController::class, 'suggestReply']);
 Route::get('/conversations/{id}/summary', [AIController::class, 'generateSummary']);
+
+// User & Role Management
+Route::apiResource('/users', UserRoleController::class)->only(['index', 'store', 'update', 'destroy']);
+Route::get('/roles', [UserRoleController::class, 'rolesIndex']);
+Route::post('/roles', [UserRoleController::class, 'rolesStore']);
+Route::put('/roles/matrix', [UserRoleController::class, 'rolesUpdateMatrix']);
 
 // Webhook
 Route::post('/webhooks/telegram', [\App\Http\Controllers\Api\WebhookController::class, 'telegram']);

@@ -29,11 +29,31 @@ class DatabaseSeeder extends Seeder
             'created_at' => now()
         ]);
 
+        $superAdminRole = \App\Models\Role::create([
+            'name' => 'Super Admin',
+            'permissions' => ['inbox', 'settings', 'users'],
+            'company_id' => $companyId
+        ]);
+
+        $managerRole = \App\Models\Role::create([
+            'name' => 'Manager',
+            'permissions' => ['inbox', 'settings'],
+            'company_id' => $companyId
+        ]);
+
+        $agentRole = \App\Models\Role::create([
+            'name' => 'Agent / CS',
+            'permissions' => ['inbox'],
+            'company_id' => $companyId
+        ]);
+
         $user = \App\Models\User::create([
             'name' => 'Super Admin',
             'email' => 'admin@omnichat.com',
             'password' => \Hash::make('password'),
-            'company_id' => $companyId
+            'company_id' => $companyId,
+            'role_id' => $superAdminRole->id,
+            'role' => 'super_admin'
         ]);
 
         // 1. Settings & Knowledge Base
