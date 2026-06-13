@@ -5,6 +5,96 @@ const SettingsView = () => {
     const { data: kbData, refetch: refetchKb } = useApi('/api/knowledge-base');
     const [kbForm, setKbForm] = useState({ category: 'Company Profile', title: '', content: '' });
 
+    // Products state
+    const [masterSubTab, setMasterSubTab] = useState('kb');
+    const { data: productsData, refetch: refetchProducts } = useApi('/api/products');
+    const [productForm, setProductForm] = useState({
+        id: null,
+        name: '',
+        price: '',
+        stock: '',
+        external_product_id: '',
+        compatibilities: [{ brand: '', model: '', year: '' }]
+    });
+
+    const handleCompatibilityChange = (index, field, value) => {
+        const newCompatibilities = [...productForm.compatibilities];
+        newCompatibilities[index][field] = value;
+        setProductForm({ ...productForm, compatibilities: newCompatibilities });
+    };
+
+    const addCompatibilityRow = () => {
+        setProductForm({
+            ...productForm,
+            compatibilities: [...productForm.compatibilities, { brand: '', model: '', year: '' }]
+        });
+    };
+
+    const removeCompatibilityRow = (index) => {
+        const newCompatibilities = productForm.compatibilities.filter((_, i) => i !== index);
+        setProductForm({ ...productForm, compatibilities: newCompatibilities });
+    };
+
+    const saveProduct = () => {
+        if (!productForm.name || !productForm.price || !productForm.stock) {
+            alert('Name, Price, and Stock are required.');
+            return;
+        }
+        const method = productForm.id ? 'PUT' : 'POST';
+        const url = productForm.id ? `/api/products/${productForm.id}` : '/api/products';
+        
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(productForm)
+        })
+        .then(res => res.json())
+        .then(() => {
+            setProductForm({
+                id: null,
+                name: '',
+                price: '',
+                stock: '',
+                external_product_id: '',
+                compatibilities: [{ brand: '', model: '', year: '' }]
+            });
+            refetchProducts();
+            alert('Product saved successfully!');
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Failed to save product.');
+        });
+    };
+
+    const editProduct = (prod) => {
+        setProductForm({
+            id: prod.id,
+            name: prod.name,
+            price: prod.price,
+            stock: prod.stock,
+            external_product_id: prod.external_product_id || '',
+            compatibilities: prod.product_compatibilities && prod.product_compatibilities.length > 0
+                ? prod.product_compatibilities.map(c => ({ brand: c.vehicle_brand || '', model: c.vehicle_model || '', year: c.vehicle_year || '' }))
+                : [{ brand: '', model: '', year: '' }]
+        });
+    };
+
+    const deleteProduct = (id) => {
+        if (!confirm('Are you sure you want to delete this product?')) return;
+        fetch(`/api/products/${id}`, {
+            method: 'DELETE'
+        })
+        .then(() => {
+            refetchProducts();
+            alert('Product deleted successfully!');
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Failed to delete product.');
+        });
+    };
+
     // Channels & AI Settings state
     const { data: settingsData, refetch: refetchSettings } = useApi('/api/settings');
 
@@ -194,37 +284,124 @@ const SettingsView = () => {
 
                 {activeTab === 'master' && (
                     <div>
-                        <div className="card">
-                            <div className="card-title">Knowledge Base</div>
-                            <div className="form-group">
-                                <label>Category</label>
-                                <select className="form-control" value={kbForm.category} onChange={e => setKbForm({...kbForm, category: e.target.value})}>
-                                    <option>Company Profile</option>
-                                    <option>FAQ</option>
-                                    <option>Product Catalog</option>
-                                    <option>SOP Customer Service</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label>Title</label>
-                                <input type="text" className="form-control" placeholder="e.g. Return Policy" value={kbForm.title} onChange={e => setKbForm({...kbForm, title: e.target.value})} />
-                            </div>
-                            <div className="form-group">
-                                <label>Content</label>
-                                <textarea className="form-control" rows="5" placeholder="Detailed information..." value={kbForm.content} onChange={e => setKbForm({...kbForm, content: e.target.value})}></textarea>
-                            </div>
-                            <button className="btn" onClick={saveKb}>Save Data</button>
+                        <div style=@{{display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '0.35rem', borderRadius: '0.5rem', width: 'fit-content'}}>
+                            <button className="btn" style=@{{padding: '0.35rem 1rem', fontSize: '0.85rem', background: masterSubTab === 'kb' ? 'var(--accent)' : 'transparent', border: masterSubTab === 'kb' ? 'none' : '1px solid rgba(255,255,255,0.1)'}} onClick={() => setMasterSubTab('kb')}>Knowledge Base</button>
+                            <button className="btn" style=@{{padding: '0.35rem 1rem', fontSize: '0.85rem', background: masterSubTab === 'products' ? 'var(--accent)' : 'transparent', border: masterSubTab === 'products' ? 'none' : '1px solid rgba(255,255,255,0.1)'}} onClick={() => setMasterSubTab('products')}>Products Catalog</button>
                         </div>
-                        <div className="card">
-                            <div className="card-title">Saved Data</div>
-                            {kbData && kbData.map(kb => (
-                                <div key={kb.id} style=@{{background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem'}}>
-                                    <div style=@{{color: 'var(--accent)', fontSize: '0.8rem', marginBottom: '0.25rem'}}>{kb.category}</div>
-                                    <div style=@{{fontWeight: '600', marginBottom: '0.5rem'}}>{kb.title}</div>
-                                    <div style=@{{fontSize: '0.875rem', color: 'var(--text-muted)'}}>{kb.content}</div>
+
+                        {masterSubTab === 'products' ? (
+                            <div>
+                                <div className="card">
+                                    <div className="card-title">{productForm.id ? 'Edit Product' : 'Add Product'}</div>
+                                    <div className="form-group">
+                                        <label>Product Name</label>
+                                        <input type="text" className="form-control" placeholder="e.g. Oli Motul Scooter" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} />
+                                    </div>
+                                    <div style=@{{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
+                                        <div className="form-group" style=@{{marginBottom: 0}}>
+                                            <label>Price (Rp)</label>
+                                            <input type="number" className="form-control" placeholder="e.g. 80000" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} />
+                                        </div>
+                                        <div className="form-group" style=@{{marginBottom: 0}}>
+                                            <label>Stock</label>
+                                            <input type="number" className="form-control" placeholder="e.g. 50" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} />
+                                        </div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label>External Product ID (Optional)</label>
+                                        <input type="text" className="form-control" placeholder="e.g. EX-101" value={productForm.external_product_id} onChange={e => setProductForm({...productForm, external_product_id: e.target.value})} />
+                                    </div>
+                                    
+                                    <div className="form-group" style=@{{marginTop: '1.5rem'}}>
+                                        <div style=@{{display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '600', marginBottom: '0.5rem'}}>
+                                            <span>Vehicle Compatibilities</span>
+                                            <button className="btn" style=@{{padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', border: 'none'}} onClick={addCompatibilityRow}>+ Add Row</button>
+                                        </div>
+                                        {productForm.compatibilities.map((comp, idx) => (
+                                            <div key={idx} style=@{{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center'}}>
+                                                <input type="text" className="form-control" style=@{{padding: '0.35rem', fontSize: '0.85rem'}} placeholder="Brand (e.g. Honda)" value={comp.brand} onChange={e => handleCompatibilityChange(idx, 'brand', e.target.value)} />
+                                                <input type="text" className="form-control" style=@{{padding: '0.35rem', fontSize: '0.85rem'}} placeholder="Model (e.g. Vario)" value={comp.model} onChange={e => handleCompatibilityChange(idx, 'model', e.target.value)} />
+                                                <input type="text" className="form-control" style=@{{padding: '0.35rem', fontSize: '0.85rem'}} placeholder="Year (e.g. 2020)" value={comp.year} onChange={e => handleCompatibilityChange(idx, 'year', e.target.value)} />
+                                                <button className="btn" style=@{{padding: '0.35rem 0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none'}} onClick={() => removeCompatibilityRow(idx)}>✕</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div style=@{{display: 'flex', gap: '0.5rem', marginTop: '1.5rem'}}>
+                                        <button className="btn" onClick={saveProduct}>{productForm.id ? 'Update Product' : 'Save Product'}</button>
+                                        {productForm.id && (
+                                            <button className="btn" style=@{{background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)'}} onClick={() => setProductForm({ id: null, name: '', price: '', stock: '', external_product_id: '', compatibilities: [{ brand: '', model: '', year: '' }] })}>Cancel</button>
+                                        )}
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
+                                <div className="card">
+                                    <div className="card-title">Product Catalog List</div>
+                                    {productsData && productsData.map(prod => (
+                                        <div key={prod.id} style=@{{background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                                            <div style=@{{flex: 1}}>
+                                                <div style=@{{fontWeight: '600', color: 'white', fontSize: '1rem'}}>{prod.name}</div>
+                                                <div style=@{{fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem'}}>
+                                                    Price: Rp{Number(prod.price).toLocaleString('id-ID')} | Stock: {prod.stock} {prod.external_product_id && `| Ext ID: ${prod.external_product_id}`}
+                                                </div>
+                                                {prod.product_compatibilities && prod.product_compatibilities.length > 0 && (
+                                                    <div style=@{{fontSize: '0.8rem', color: 'var(--accent)', marginTop: '0.5rem'}}>
+                                                        Compatibilities: {prod.product_compatibilities.map(c => `${c.vehicle_brand} ${c.vehicle_model} (${c.vehicle_year || 'All'})`).join(', ')}
+                                                    </div>
+                                                )}
+                                                <div style=@{{marginTop: '0.5rem'}}>
+                                                    {prod.vector ? (
+                                                        <span style=@{{fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', borderRadius: '0.25rem', display: 'inline-flex', alignItems: 'center'}}>
+                                                            ✓ Vector Synced
+                                                        </span>
+                                                    ) : (
+                                                        <span style=@{{fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', borderRadius: '0.25rem', display: 'inline-flex', alignItems: 'center'}}>
+                                                            ✗ No Vector
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div style=@{{display: 'flex', gap: '0.5rem'}}>
+                                                <button className="btn" style=@{{padding: '0.25rem 0.5rem', fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', border: 'none'}} onClick={() => editProduct(prod)}>Edit</button>
+                                                <button className="btn" style=@{{padding: '0.25rem 0.5rem', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none'}} onClick={() => deleteProduct(prod.id)}>Delete</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="card">
+                                    <div className="card-title">Knowledge Base</div>
+                                    <div className="form-group">
+                                        <label>Category</label>
+                                        <select className="form-control" value={kbForm.category} onChange={e => setKbForm({...kbForm, category: e.target.value})}>
+                                            <option>Company Profile</option>
+                                            <option>FAQ</option>
+                                            <option>Product Catalog</option>
+                                            <option>SOP Customer Service</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Title</label>
+                                        <input type="text" className="form-control" placeholder="e.g. Return Policy" value={kbForm.title} onChange={e => setKbForm({...kbForm, title: e.target.value})} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Content</label>
+                                        <textarea className="form-control" rows="5" placeholder="Detailed information..." value={kbForm.content} onChange={e => setKbForm({...kbForm, content: e.target.value})}></textarea>
+                                    </div>
+                                    <button className="btn" onClick={saveKb}>Save Data</button>
+                                </div>
+                                <div className="card">
+                                    <div className="card-title">Saved Data</div>
+                                    {kbData && kbData.map(kb => (
+                                        <div key={kb.id} style=@{{background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem'}}>
+                                            <div style=@{{color: 'var(--accent)', fontSize: '0.8rem', marginBottom: '0.25rem'}}>{kb.category}</div>
+                                            <div style=@{{fontWeight: '600', marginBottom: '0.5rem'}}>{kb.title}</div>
+                                            <div style=@{{fontSize: '0.875rem', color: 'var(--text-muted)'}}>{kb.content}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

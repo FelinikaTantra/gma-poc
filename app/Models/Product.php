@@ -8,6 +8,10 @@ class Product extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'vector' => 'array',
+    ];
+
     public function productCompatibilities()
     {
         return $this->hasMany(ProductCompatibility::class);

@@ -13,10 +13,14 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Master Data (Knowledge Base)
+// Master Data (Knowledge Base & Products)
 Route::get('/knowledge-base', [KnowledgeBaseController::class, 'index']);
 Route::post('/knowledge-base', [KnowledgeBaseController::class, 'store']);
 Route::delete('/knowledge-base/{id}', [KnowledgeBaseController::class, 'destroy']);
+Route::get('/products', [\App\Http\Controllers\Api\ProductController::class, 'index']);
+Route::post('/products', [\App\Http\Controllers\Api\ProductController::class, 'store']);
+Route::put('/products/{id}', [\App\Http\Controllers\Api\ProductController::class, 'update']);
+Route::delete('/products/{id}', [\App\Http\Controllers\Api\ProductController::class, 'destroy']);
 
 // Channel Settings
 Route::get('/settings', [ChannelSettingsController::class, 'index']);

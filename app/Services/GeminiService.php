@@ -350,4 +350,32 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
 
         return json_decode($responseText, true) ?? [];
     }
+
+    public function generateEmbedding($text)
+    {
+        $openAiToken = $this->getOpenAiToken();
+        if (!$openAiToken) {
+            \Log::warning("OpenAI Token is not configured. Vector embedding skipped.");
+            return null;
+        }
+
+        try {
+            $response = Http::withToken($openAiToken)
+                ->post("https://api.openai.com/v1/embeddings", [
+                    'model' => 'text-embedding-3-small',
+                    'input' => $text
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['data'][0]['embedding'] ?? null;
+            }
+
+            \Log::error("OpenAI Embedding failed: " . json_encode($response->json()));
+        } catch (\Exception $e) {
+            \Log::error("OpenAI Embedding exception: " . $e->getMessage());
+        }
+
+        return null;
+    }
 }
