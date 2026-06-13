@@ -101,6 +101,7 @@
             };
 
             const [testingConnection, setTestingConnection] = useState(false);
+            const [syncingMessages, setSyncingMessages] = useState(false);
 
             const saveTelegramChannel = () => {
                 if (!settingsData) return;
@@ -156,6 +157,28 @@
                     setTestingConnection(false);
                     console.error(err);
                     alert('Connection failed: Network error.');
+                });
+            };
+
+            const syncTelegramMessages = () => {
+                setSyncingMessages(true);
+                fetch('/api/settings/telegram/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    setSyncingMessages(false);
+                    if (data.success) {
+                        alert(data.message);
+                    } else {
+                        alert(`Sync failed: ${data.message}`);
+                    }
+                })
+                .catch(err => {
+                    setSyncingMessages(false);
+                    console.error(err);
+                    alert('Sync failed: Network error.');
                 });
             };
 
@@ -235,6 +258,7 @@
                                     <div style=@{{marginTop: '1rem', display: 'flex', gap: '0.5rem'}}>
                                         <button className="btn" onClick={saveTelegramChannel}>Save</button>
                                         <button className="btn" style=@{{background: 'rgba(255,255,255,0.1)'}} onClick={testTelegramConnection} disabled={testingConnection}>{testingConnection ? 'Testing...' : 'Test Connection'}</button>
+                                        <button className="btn" style=@{{background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6'}} onClick={syncTelegramMessages} disabled={syncingMessages}>{syncingMessages ? 'Syncing...' : 'Sync Messages'}</button>
                                     </div>
                                 </div>
 

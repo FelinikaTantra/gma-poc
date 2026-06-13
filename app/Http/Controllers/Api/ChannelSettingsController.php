@@ -83,4 +83,101 @@ class ChannelSettingsController extends Controller
             ], 500);
         }
     }
+
+    public function syncTelegramMessages(Request $request)
+    {
+        $channel = Channel::where('type', 'telegram')->first();
+        if (!$channel) {
+            return response()->json(['success' => false, 'message' => 'Telegram channel not configured.'], 404);
+        }
+
+        $botToken = $channel->config_json['bot_token'] ?? env('TELEGRAM_BOT_TOKEN');
+        if (!$botToken) {
+            return response()->json(['success' => false, 'message' => 'Bot token not found.'], 400);
+        }
+
+        try {
+            // 1. Temporarily delete the webhook so we can call getUpdates
+            \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$botToken}/deleteWebhook");
+
+            // 2. Fetch updates via getUpdates
+            $response = \Illuminate\Support\Facades\Http::get("https://api.telegram.org/bot{$botToken}/getUpdates");
+            $updatesCount = 0;
+
+            if ($response->successful() && $response->json('ok')) {
+                $updates = $response->json('result') ?? [];
+                $engine = app(\App\Engines\ConversationEngine::class);
+                $adapter = new \App\Adapters\TelegramAdapter();
+
+                foreach ($updates as $update) {
+                    // Construct a Request object from the update payload
+                    $fakeRequest = \Illuminate\Http\Request::create('/api/telegram/webhook', 'POST', $update);
+                    $payload = $adapter->parseWebhook($fakeRequest);
+                    if ($payload) {
+                        $engine->handleIncoming($payload, $adapter);
+                        $updatesCount++;
+                    }
+                }
+            }
+
+            // 3. Re-enable the webhook
+            $host = $request->getHost();
+            // Preserve scheme and port if developing locally, or default to HTTPS for production
+            $scheme = $request->isSecure() ? 'https' : 'http';
+            $port = $request->getPort();
+            $portString = ($port && !in_array($port, [80, 443])) ? ":{$port}" : '';
+            
+            // Webhook URL must be HTTPS for Telegram, but we preserve local host names for simulation/mock testing
+            $webhookUrl = "https://{$host}{$portString}/api/telegram/webhook";
+
+            $certContent = null;
+            try {
+                $streamContext = @stream_context_create([
+                    "ssl" => [
+                        "capture_peer_cert" => true,
+                        "verify_peer" => false,
+                        "verify_peer_name" => false
+                    ]
+                ]);
+                $client = @stream_socket_client("ssl://{$host}:443", $errno, $errstr, 5, STREAM_CLIENT_CONNECT, $streamContext);
+                if ($client) {
+                    $params = stream_context_get_params($client);
+                    $cert = $params["options"]["ssl"]["capture_peer_cert"] ?? null;
+                    if ($cert) {
+                        openssl_x509_export($cert, $certContent);
+                    }
+                }
+            } catch (\Exception $e) {
+                // Ignore failure to capture cert dynamically (e.g. on localhost)
+            }
+
+            if ($certContent) {
+                $tempCertFile = tempnam(sys_get_temp_dir(), 'tg_cert_');
+                file_put_contents($tempCertFile, $certContent);
+
+                \Illuminate\Support\Facades\Http::attach('certificate', file_get_contents($tempCertFile), 'certificate.pem')
+                    ->post("https://api.telegram.org/bot{$botToken}/setWebhook", [
+                        'url' => $webhookUrl
+                    ]);
+
+                @unlink($tempCertFile);
+            } else {
+                \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$botToken}/setWebhook", [
+                    'url' => $webhookUrl
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully synced {$updatesCount} updates.",
+                'count' => $updatesCount
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sync failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

@@ -22,6 +22,7 @@ Route::delete('/knowledge-base/{id}', [KnowledgeBaseController::class, 'destroy'
 Route::get('/settings', [ChannelSettingsController::class, 'index']);
 Route::put('/settings/channel/{id}', [ChannelSettingsController::class, 'updateChannel']);
 Route::post('/settings/telegram/test', [ChannelSettingsController::class, 'testTelegramConnection']);
+Route::post('/settings/telegram/sync', [ChannelSettingsController::class, 'syncTelegramMessages']);
 Route::put('/settings/ai-toggle', [ChannelSettingsController::class, 'toggleAi']);
 
 // Chat API (Standardized to PRD)
