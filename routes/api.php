@@ -37,6 +37,7 @@ Route::get('/conversations', [ChatController::class, 'inbox']);
 Route::get('/conversations/{id}/messages', [ChatController::class, 'show']);
 Route::post('/messages/send', [ChatController::class, 'sendMessage']);
 Route::patch('/conversations/{id}/status', [ChatController::class, 'updateStatus']);
+Route::get('/analytics', [ChatController::class, 'getAnalytics']);
 
 // Phase 3 Features
 Route::post('/messages/{id}/feedback', [ChatController::class, 'submitFeedback']);

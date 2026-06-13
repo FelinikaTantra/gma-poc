@@ -144,6 +144,47 @@ class ChatController extends Controller
         return response()->json($note, 201);
     }
 
+    public function getAnalytics()
+    {
+        $channels = \App\Models\Channel::all();
+        $conversations = \App\Models\Conversation::with('channel')->get();
+        $totalMessages = \App\Models\Message::count();
+
+        $byChannel = [];
+        foreach ($channels as $c) {
+            $byChannel[$c->name] = 0;
+        }
+
+        $byStatus = [
+            'waiting_admin' => 0,
+            'waiting_customer' => 0,
+            'closed' => 0
+        ];
+
+        foreach ($conversations as $conv) {
+            $channelName = $conv->channel->name ?? 'Unknown';
+            if (!isset($byChannel[$channelName])) {
+                $byChannel[$channelName] = 0;
+            }
+            $byChannel[$channelName]++;
+
+            $status = $conv->status;
+            if ($status === 'open') {
+                $status = 'waiting_customer';
+            }
+            if (isset($byStatus[$status])) {
+                $byStatus[$status]++;
+            }
+        }
+
+        return response()->json([
+            'total_conversations' => $conversations->count(),
+            'total_messages' => $totalMessages,
+            'by_channel' => $byChannel,
+            'by_status' => $byStatus
+        ]);
+    }
+
     public function getQuickReplies()
     {
         $replies = \DB::table('quick_replies')->get();

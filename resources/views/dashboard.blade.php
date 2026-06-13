@@ -52,6 +52,7 @@
             return { data, loading, setData, refetch: fetchData };
         };
 
+        @include('components.overview')
         @include('components.settings')
         @include('components.chat')
         @include('components.users')
@@ -60,7 +61,8 @@
             const getInitialView = () => {
                 if (window.location.pathname.includes('/settings')) return 'settings';
                 if (window.location.pathname.includes('/users')) return 'users';
-                return 'chat';
+                if (window.location.pathname.includes('/overview')) return 'overview';
+                return 'overview';
             };
             const [view, setView] = useState(getInitialView());
             const [activeRole, setActiveRole] = useState('');
@@ -157,10 +159,16 @@
                         </div>
 
                         {userPermissions.includes('inbox') && (
-                            <div className={`nav-item ${view === 'chat' ? 'active' : ''}`} onClick={() => navigateTo('chat', '/dashboard/inbox')}>
-                                <i data-lucide="inbox" style=@{{width: 20, height: 20}}></i>
-                                Unified Inbox
-                            </div>
+                            <>
+                                <div className={`nav-item ${view === 'overview' ? 'active' : ''}`} onClick={() => navigateTo('overview', '/dashboard/overview')}>
+                                    <i data-lucide="layout-dashboard" style=@{{width: 20, height: 20}}></i>
+                                    Dashboard Overview
+                                </div>
+                                <div className={`nav-item ${view === 'chat' ? 'active' : ''}`} onClick={() => navigateTo('chat', '/dashboard/inbox')}>
+                                    <i data-lucide="inbox" style=@{{width: 20, height: 20}}></i>
+                                    Unified Inbox
+                                </div>
+                            </>
                         )}
                         {userPermissions.includes('settings') && (
                             <div className={`nav-item ${view === 'settings' ? 'active' : ''}`} onClick={() => navigateTo('settings', '/dashboard/settings')}>
@@ -185,6 +193,7 @@
                             </form>
                         </div>
                     </div>
+                    {view === 'overview' && <OverviewView />}
                     {view === 'chat' && <ChatView />}
                     {view === 'settings' && <SettingsView />}
                     {view === 'users' && <UserRoleView roles={roles} fetchRoles={fetchRoles} users={users} fetchUsers={fetchUsers} />}

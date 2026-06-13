@@ -16,6 +16,10 @@ Route::middleware(['auth'])->group(function () {
         return view('dashboard');
     })->name('dashboard.inbox');
 
+    Route::get('/dashboard/overview', function () {
+        return view('dashboard');
+    })->name('dashboard.overview');
+
     Route::get('/dashboard/settings', function () {
         return view('dashboard');
     })->name('dashboard.settings');
@@ -25,6 +29,6 @@ Route::middleware(['auth'])->group(function () {
     })->name('dashboard.users');
 
     Route::get('/dashboard', function () {
-        return redirect()->route('dashboard.inbox');
+        return redirect()->route('dashboard.overview');
     })->name('dashboard');
 });
