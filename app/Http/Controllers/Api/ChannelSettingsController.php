@@ -85,6 +85,44 @@ class ChannelSettingsController extends Controller
         }
     }
 
+    public function testOpenAiConnection(Request $request)
+    {
+        $validated = $request->validate([
+            'openai_token' => 'required|string',
+        ]);
+
+        $openaiToken = $validated['openai_token'];
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withToken($openaiToken)
+                ->get("https://api.openai.com/v1/models");
+
+            if ($response->successful()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Token is valid! Connected to OpenAI successfully.'
+                ]);
+            }
+
+            $errorMsg = 'Invalid Token. OpenAI responded with status ' . $response->status();
+            $body = $response->json();
+            if (isset($body['error']['message'])) {
+                $errorMsg .= ': ' . $body['error']['message'];
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $errorMsg
+            ], $response->status() >= 400 && $response->status() < 600 ? $response->status() : 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Connection failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function syncTelegramMessages(Request $request)
     {
         $channel = Channel::where('type', 'telegram')->first();

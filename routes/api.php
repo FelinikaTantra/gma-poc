@@ -24,6 +24,7 @@ Route::put('/settings/channel/{id}', [ChannelSettingsController::class, 'updateC
 Route::post('/settings/telegram/test', [ChannelSettingsController::class, 'testTelegramConnection']);
 Route::post('/settings/telegram/sync', [ChannelSettingsController::class, 'syncTelegramMessages']);
 Route::put('/settings/ai-toggle', [ChannelSettingsController::class, 'toggleAi']);
+Route::post('/settings/openai/test', [ChannelSettingsController::class, 'testOpenAiConnection']);
 
 // Chat API (Standardized to PRD)
 Route::get('/conversations', [ChatController::class, 'inbox']);
