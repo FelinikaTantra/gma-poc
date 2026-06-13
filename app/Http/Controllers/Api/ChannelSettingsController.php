@@ -47,4 +47,40 @@ class ChannelSettingsController extends Controller
         ]);
         return response()->json($aiSetting);
     }
+
+    public function testTelegramConnection(Request $request)
+    {
+        $validated = $request->validate([
+            'bot_token' => 'required|string',
+        ]);
+
+        $botToken = $validated['bot_token'];
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::get("https://api.telegram.org/bot{$botToken}/getMe");
+
+            if ($response->successful() && $response->json('ok')) {
+                $result = $response->json('result');
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Connection successful!',
+                    'bot' => [
+                        'username' => '@' . ($result['username'] ?? ''),
+                        'first_name' => $result['first_name'] ?? '',
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to connect. Telegram responded with: ' . ($response->json('description') ?? 'Unknown error')
+            ], 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Connection failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

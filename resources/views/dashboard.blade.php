@@ -100,6 +100,8 @@
                 }).then(() => refetchSettings());
             };
 
+            const [testingConnection, setTestingConnection] = useState(false);
+
             const saveTelegramChannel = () => {
                 if (!settingsData) return;
                 const tg = settingsData.channels.find(c => c.name === 'Telegram' || c.type === 'telegram');
@@ -124,6 +126,36 @@
                 .catch(err => {
                     console.error(err);
                     alert('Failed to save Telegram bot configuration.');
+                });
+            };
+
+            const testTelegramConnection = () => {
+                if (!botToken) {
+                    alert('Please enter a Bot Token first.');
+                    return;
+                }
+                setTestingConnection(true);
+                fetch('/api/settings/telegram/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bot_token: botToken })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    setTestingConnection(false);
+                    if (data.success) {
+                        alert(`Success: Connected to ${data.bot.first_name} (${data.bot.username})`);
+                        if (!botUsername) {
+                            setBotUsername(data.bot.username);
+                        }
+                    } else {
+                        alert(`Connection failed: ${data.message}`);
+                    }
+                })
+                .catch(err => {
+                    setTestingConnection(false);
+                    console.error(err);
+                    alert('Connection failed: Network error.');
                 });
             };
 
@@ -202,7 +234,7 @@
                                     </div>
                                     <div style=@{{marginTop: '1rem', display: 'flex', gap: '0.5rem'}}>
                                         <button className="btn" onClick={saveTelegramChannel}>Save</button>
-                                        <button className="btn" style=@{{background: 'rgba(255,255,255,0.1)'}}>Test Connection</button>
+                                        <button className="btn" style=@{{background: 'rgba(255,255,255,0.1)'}} onClick={testTelegramConnection} disabled={testingConnection}>{testingConnection ? 'Testing...' : 'Test Connection'}</button>
                                     </div>
                                 </div>
 
