@@ -215,6 +215,13 @@ class ConversationEngineTest extends TestCase
             'message' => 'Help me please'
         ]);
 
+        // Add a system message afterwards to test that it is ignored
+        $conversation->messages()->create([
+            'sender_type' => 'system',
+            'message_type' => 'text',
+            'message' => 'AI confidence too low.'
+        ]);
+
         $response = $this->getJson("/api/conversations/{$conversation->id}/suggest");
         $response->assertStatus(200)
             ->assertJson(['suggestion' => 'Hello human suggestion']);

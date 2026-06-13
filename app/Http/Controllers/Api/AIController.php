@@ -20,7 +20,12 @@ class AIController extends Controller
     {
         $conversation = Conversation::findOrFail($conversationId);
         
-        $lastMessage = $conversation->messages()->orderBy('created_at', 'desc')->first();
+        $lastMessage = $conversation->messages()
+            ->where('sender_type', '!=', 'system')
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+            
         if (!$lastMessage || $lastMessage->sender_type !== 'customer') {
             return response()->json(['suggestion' => '']);
         }
