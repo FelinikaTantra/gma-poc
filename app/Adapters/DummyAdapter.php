@@ -11,7 +11,7 @@ class DummyAdapter implements ChannelInterface
         return null;
     }
 
-    public function sendReply(string $externalId, string $message, array $config)
+    public function sendReply(string $externalId, string $message, array $config = []): bool
     {
         // Do nothing for UI simulator
         \Log::info("DummyAdapter sendReply to $externalId: $message");

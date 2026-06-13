@@ -61,28 +61,46 @@ class ConversationEngine
             'last_message_at' => now()
         ]);
 
-        // 5. AI Engine Logic (Fase 1: Suggestion Only / 1-Klik Send)
+        // 5. AI Engine Logic
         $aiSetting = AiSetting::first();
         if ($aiSetting) {
             $aiReplyData = $this->gemini->generateReplyWithConfidence($conversation);
             $confidence = $aiReplyData['confidence'];
             
-            if ($confidence >= 50) {
-                // Generate Suggestion for 1-Klik Send
+            if ($aiSetting->full_control) {
+                // Directly reply to customer
                 $conversation->messages()->create([
-                    'sender_type' => 'system',
-                    'message' => 'AI prepared a suggestion. Awaiting human review.',
-                    'metadata' => [
-                        'confidence' => $confidence,
-                        'suggestion' => $aiReplyData['reply']
-                    ]
+                    'sender_type' => 'ai',
+                    'message_type' => 'text',
+                    'message' => $aiReplyData['reply']
                 ]);
+
+                $conversation->update([
+                    'status' => 'waiting_customer',
+                    'unread_count' => 0
+                ]);
+
+                // Send reply to customer via adapter
+                $config = $channel->config_json ?? [];
+                $adapter->sendReply($customer->external_id, $aiReplyData['reply'], $config);
             } else {
-                $conversation->messages()->create([
-                    'sender_type' => 'system',
-                    'message' => 'AI confidence too low. Escalated to human agent.',
-                    'metadata' => ['confidence' => $confidence]
-                ]);
+                // Generate Suggestion for 1-Klik Send (Human in the loop)
+                if ($confidence >= 50) {
+                    $conversation->messages()->create([
+                        'sender_type' => 'system',
+                        'message' => 'AI prepared a suggestion. Awaiting human review.',
+                        'metadata' => [
+                            'confidence' => $confidence,
+                            'suggestion' => $aiReplyData['reply']
+                        ]
+                    ]);
+                } else {
+                    $conversation->messages()->create([
+                        'sender_type' => 'system',
+                        'message' => 'AI confidence too low. Escalated to human agent.',
+                        'metadata' => ['confidence' => $confidence]
+                    ]);
+                }
             }
         }
     }
