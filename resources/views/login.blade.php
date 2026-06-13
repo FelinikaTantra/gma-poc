@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OmniChat - Login</title>
+    <title>GMA - Login</title>
     <style>
         :root {
             --bg-dark: #0f172a;
@@ -83,7 +83,7 @@
 <body>
 
     <div class="login-card">
-        <h1>OmniChat Login</h1>
+        <h1>GMA Login</h1>
         
         <form action="{{ route('login') }}" method="POST">
             @csrf

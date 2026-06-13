@@ -259,4 +259,30 @@ class ConversationEngineTest extends TestCase
         $response->assertStatus(200)
             ->assertJson(['suggestion' => '']);
     }
+
+    public function test_updating_conversation_status_via_api()
+    {
+        $channel = Channel::create(['name' => 'Telegram', 'type' => 'telegram']);
+        $customer = Customer::create([
+            'external_id' => '12345',
+            'channel_id' => $channel->id,
+            'name' => 'Test Customer'
+        ]);
+
+        $conversation = Conversation::create([
+            'company_id' => null,
+            'customer_id' => $customer->id,
+            'channel_id' => $channel->id,
+            'status' => 'waiting_admin',
+            'unread_count' => 1
+        ]);
+
+        $response = $this->patchJson("/api/conversations/{$conversation->id}/status", [
+            'status' => 'closed'
+        ]);
+
+        $response->assertStatus(200);
+        $conversation->refresh();
+        $this->assertEquals('closed', $conversation->status);
+    }
 }

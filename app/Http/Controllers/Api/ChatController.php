@@ -90,6 +90,20 @@ class ChatController extends Controller
         return response()->json($message, 201);
     }
 
+    public function updateStatus(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:open,waiting_admin,waiting_customer,closed'
+        ]);
+
+        $conversation = Conversation::findOrFail($id);
+        $conversation->update([
+            'status' => $validated['status']
+        ]);
+
+        return response()->json($conversation);
+    }
+
     public function submitFeedback(Request $request, $id)
     {
         $validated = $request->validate([

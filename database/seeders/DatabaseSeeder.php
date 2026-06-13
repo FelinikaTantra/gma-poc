@@ -24,7 +24,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $companyId = \DB::table('companies')->insertGetId([
-            'name' => 'PT OmniChat Demo',
+            'name' => 'PT Maju Gemilang Persada',
             'plan_id' => $plan,
             'created_at' => now()
         ]);

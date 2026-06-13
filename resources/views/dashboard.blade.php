@@ -137,7 +137,7 @@
                     <div className="sidebar">
                         <div className="logo">
                             <i data-lucide="message-square" style=@{{width: 24, height: 24}}></i>
-                            OmniChat
+                            GMA
                         </div>
                         
                         <div style=@{{padding: '1rem', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)'}}>

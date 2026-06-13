@@ -111,9 +111,31 @@ const ChatView = () => {
             });
     };
 
+    const toggleChatStatus = (id, newStatus) => {
+        fetch(`/api/conversations/${id}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(res => res.json())
+        .then(() => {
+            refetchInbox();
+            refetchConversation();
+            setTimeout(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, 100);
+        })
+        .catch(err => {
+            console.error('Failed to update status:', err);
+            alert('Failed to update status.');
+        });
+    };
+
     const filteredInbox = inbox ? inbox.filter(c => {
         if (chatFilter === 'Waiting Admin') return c.status === 'waiting_admin' || c.status === 'pending';
-        if (chatFilter === 'Waiting Customer') return c.status === 'waiting_customer';
+        if (chatFilter === 'Waiting Customer') return c.status === 'waiting_customer' || c.status === 'open';
         if (chatFilter === 'Closed') return c.status === 'closed';
         return true;
     }) : [];
@@ -199,6 +221,100 @@ const ChatView = () => {
                         </div>
                     ) : (
                         <>
+                            <div className="chat-header" style=@{{
+                                padding: '0.75rem 1.5rem',
+                                borderBottom: '1px solid var(--border-color)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                background: 'rgba(30, 41, 59, 0.4)',
+                                flexShrink: 0
+                            }}>
+                                {(() => {
+                                    const currentChat = inbox ? inbox.find(c => c.id === selectedChat) : null;
+                                    if (!currentChat) return null;
+                                    
+                                    const status = currentChat.status;
+                                    let statusBg = 'rgba(255,255,255,0.1)';
+                                    let statusColor = 'var(--text-muted)';
+                                    let statusLabel = status;
+                                    
+                                    if (status === 'waiting_admin') {
+                                        statusBg = 'rgba(245, 158, 11, 0.15)';
+                                        statusColor = '#fbbf24';
+                                        statusLabel = 'Waiting Admin';
+                                    } else if (status === 'waiting_customer' || status === 'open') {
+                                        statusBg = 'rgba(16, 185, 129, 0.15)';
+                                        statusColor = '#34d399';
+                                        statusLabel = 'Waiting Customer';
+                                    } else if (status === 'closed') {
+                                        statusBg = 'rgba(239, 68, 68, 0.15)';
+                                        statusColor = '#f87171';
+                                        statusLabel = 'Closed';
+                                    }
+                                    
+                                    const isClosed = status === 'closed';
+                                    
+                                    return (
+                                        <>
+                                            <div style=@{{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                                                <div style=@{{
+                                                    width: '38px',
+                                                    height: '38px',
+                                                    borderRadius: '50%',
+                                                    background: 'var(--accent)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '0.95rem',
+                                                    color: 'white'
+                                                }}>
+                                                    {currentChat.customer_name?.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div style=@{{fontWeight: 600, fontSize: '0.95rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                                        {currentChat.customer_name}
+                                                        <span className="customer-channel" style=@{{fontSize: '0.7rem', padding: '1px 6px'}}>{currentChat.channel_name}</span>
+                                                    </div>
+                                                    <div style=@{{fontSize: '0.75rem', color: 'var(--text-muted)'}}>
+                                                        Status: <span style=@{{
+                                                            padding: '0.1rem 0.4rem',
+                                                            borderRadius: '0.25rem',
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 600,
+                                                            background: statusBg,
+                                                            color: statusColor,
+                                                            border: `1px solid ${statusColor}33`,
+                                                            marginLeft: '0.25rem'
+                                                        }}>{statusLabel}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <button
+                                                    onClick={() => toggleChatStatus(selectedChat, isClosed ? 'open' : 'closed')}
+                                                    className="btn"
+                                                    style=@{{
+                                                        padding: '0.4rem 0.8rem',
+                                                        fontSize: '0.75rem',
+                                                        background: isClosed ? 'var(--success)' : 'var(--danger)',
+                                                        borderRadius: '0.375rem',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.35rem',
+                                                        fontWeight: 600
+                                                    }}
+                                                >
+                                                    <i data-lucide={isClosed ? 'play' : 'check-circle'} style=@{{width: 14, height: 14}}></i>
+                                                    {isClosed ? 'Reopen Chat' : 'Close Chat'}
+                                                </button>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
                             <div className="chat-history">
                                 {conversation && conversation.messages.map(m => (
                                     <div key={m.id} className={`message-bubble message-${m.sender_type}`}>

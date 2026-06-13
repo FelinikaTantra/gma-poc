@@ -36,6 +36,7 @@ Route::post('/settings/openai/test', [ChannelSettingsController::class, 'testOpe
 Route::get('/conversations', [ChatController::class, 'inbox']);
 Route::get('/conversations/{id}/messages', [ChatController::class, 'show']);
 Route::post('/messages/send', [ChatController::class, 'sendMessage']);
+Route::patch('/conversations/{id}/status', [ChatController::class, 'updateStatus']);
 
 // Phase 3 Features
 Route::post('/messages/{id}/feedback', [ChatController::class, 'submitFeedback']);
