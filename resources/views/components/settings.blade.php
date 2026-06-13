@@ -12,6 +12,9 @@ const SettingsView = () => {
     const [botToken, setBotToken] = useState('');
     const [botUsername, setBotUsername] = useState('');
 
+    // OpenAI state
+    const [openAiToken, setOpenAiToken] = useState('');
+
     useEffect(() => {
         lucide.createIcons();
     }, [activeTab, kbData, settingsData]);
@@ -24,6 +27,9 @@ const SettingsView = () => {
                 setBotToken(config.bot_token || '');
                 setBotUsername(config.username || '');
             }
+        }
+        if (settingsData && settingsData.ai_setting) {
+            setOpenAiToken(settingsData.ai_setting.openai_token || '');
         }
     }, [settingsData]);
 
@@ -42,8 +48,28 @@ const SettingsView = () => {
         fetch('/api/settings/ai-toggle', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ full_control: val })
+            body: JSON.stringify({ full_control: val, openai_token: openAiToken })
         }).then(() => refetchSettings());
+    };
+
+    const saveAiSettings = () => {
+        fetch('/api/settings/ai-toggle', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                full_control: settingsData.ai_setting.full_control,
+                openai_token: openAiToken
+            })
+        })
+        .then(res => res.json())
+        .then(() => {
+            alert('AI Settings saved successfully!');
+            refetchSettings();
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Failed to save AI Settings.');
+        });
     };
 
     const [testingConnection, setTestingConnection] = useState(false);
@@ -239,20 +265,39 @@ const SettingsView = () => {
 
                 {activeTab === 'ai' && settingsData && (
                     <div className="card">
-                        <div className="card-title">AI Automation</div>
-                        <div style=@{{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                        <div className="card-title">AI Settings</div>
+                        <div style=@{{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1.5rem'}}>
                             <div>
                                 <div style=@{{fontWeight: 600, color: 'white'}}>AI Full Control</div>
                                 <div style=@{{fontSize: '0.875rem', color: 'var(--text-muted)'}}>Allow AI to automatically reply to customers without admin intervention.</div>
                             </div>
                             <label className="toggle-switch">
-                                <input type="checkbox" checked={settingsData.ai_setting.full_control} onChange={e => toggleAi(e.target.checked)} />
+                                <input type="checkbox" checked={settingsData.ai_setting.full_control} onChange={e => {
+                                    // Toggle full control immediately and preserve the current token value
+                                    fetch('/api/settings/ai-toggle', {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ full_control: e.target.checked, openai_token: openAiToken })
+                                    }).then(() => refetchSettings());
+                                }} />
                                 <span className="slider"></span>
                             </label>
                         </div>
+                        <div style=@{{marginBottom: '1.5rem'}}>
+                            <label style=@{{fontSize: '0.75rem', color: '#94a3b8'}}>OpenAI API Token</label>
+                            <input 
+                                type="password" 
+                                className="form-control" 
+                                style=@{{padding: '0.5rem', fontSize: '0.875rem', marginTop: '0.25rem'}} 
+                                value={openAiToken} 
+                                onChange={e => setOpenAiToken(e.target.value)} 
+                                placeholder="sk-proj-..."
+                            />
+                        </div>
+                        <button className="btn" onClick={saveAiSettings}>Save AI Settings</button>
                         {settingsData.ai_setting.full_control && (
-                            <div style=@{{padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '0.5rem', marginTop: '1rem'}}>
-                                <i data-lucide="check-circle" style=@{{width: 16, height: 16, marginRight: '0.5rem'}}></i>
+                            <div style=@{{padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '0.5rem', marginTop: '1.5rem'}}>
+                                <i data-lucide="check-circle" style=@{{width: 16, height: 16, marginRight: '0.5rem', verticalAlign: 'middle'}}></i>
                                 AI is currently handling replies automatically.
                             </div>
                         )}

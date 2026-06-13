@@ -43,7 +43,8 @@ class ChannelSettingsController extends Controller
     {
         $aiSetting = AiSetting::first();
         $aiSetting->update([
-            'full_control' => $request->boolean('full_control')
+            'full_control' => $request->boolean('full_control'),
+            'openai_token' => $request->input('openai_token')
         ]);
         return response()->json($aiSetting);
     }
