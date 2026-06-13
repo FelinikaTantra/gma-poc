@@ -541,7 +541,7 @@ const SettingsView = () => {
                                 <div style=@{{fontSize: '0.875rem', color: 'var(--text-muted)'}}>Allow AI to automatically reply to customers without admin intervention.</div>
                             </div>
                             <label className="toggle-switch">
-                                <input type="checkbox" checked={settingsData.ai_setting.full_control} onChange={e => {
+                                <input type="checkbox" checked={settingsData.ai_setting.full_control == 1} onChange={e => {
                                     const checked = e.target.checked;
                                     if (checked) {
                                         const confirmed = window.confirm("Apakah Anda yakin ingin mengaktifkan AI Full Control? AI akan langsung otomatis membalas semua chat masuk dan chat yang belum dibalas.");
@@ -574,7 +574,7 @@ const SettingsView = () => {
                             <button className="btn" onClick={saveAiSettings}>Save AI Settings</button>
                             <button className="btn" style=@{{background: 'rgba(255,255,255,0.1)'}} onClick={testOpenAiConnection} disabled={testingOpenAi}>{testingOpenAi ? 'Testing...' : 'Test Token'}</button>
                         </div>
-                        {settingsData.ai_setting.full_control && (
+                        {settingsData.ai_setting.full_control == 1 && (
                             <div style=@{{padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '0.5rem', marginTop: '1.5rem'}}>
                                 <i data-lucide="check-circle" style=@{{width: 16, height: 16, marginRight: '0.5rem', verticalAlign: 'middle'}}></i>
                                 AI is currently handling replies automatically.

@@ -7,4 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class AiSetting extends Model
 {
     protected $guarded = [];
+
+    protected $casts = [
+        'full_control' => 'boolean',
+    ];
 }
