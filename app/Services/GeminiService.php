@@ -16,10 +16,20 @@ class GeminiService
         return env('GEMINI_API_KEY');
     }
 
+    private function getOpenAiToken()
+    {
+        $setting = \App\Models\AiSetting::first();
+        return $setting ? $setting->openai_token : null;
+    }
+
     public function generateReply(Conversation $conversation)
     {
+        $openAiToken = $this->getOpenAiToken();
         $apiKey = $this->getApiKey();
-        if (!$apiKey) return "Maaf, API Key Gemini belum dikonfigurasi.";
+
+        if (!$openAiToken && !$apiKey) {
+            return "Maaf, API Key belum dikonfigurasi.";
+        }
 
         // Priority 1: SOP
         $sop = KnowledgeBase::where('category', 'SOP Customer Service')->get();
@@ -51,13 +61,25 @@ class GeminiService
 
         $prompt = $context . $historyText;
 
+        if ($openAiToken) {
+            return $this->callOpenAi($prompt, $openAiToken, $conversation->id);
+        }
+
         return $this->callGemini($prompt, $apiKey, $conversation->id);
     }
 
     public function generateReplyWithConfidence(Conversation $conversation)
     {
+        $openAiToken = $this->getOpenAiToken();
         $apiKey = $this->getApiKey();
-        if (!$apiKey) return ['reply' => "Maaf, API Key Gemini belum dikonfigurasi.", 'confidence' => 0, 'source' => null];
+
+        if (!$openAiToken && !$apiKey) {
+            return [
+                'reply' => "Maaf, API Key belum dikonfigurasi.",
+                'confidence' => 0,
+                'source' => null
+            ];
+        }
 
         $sop = KnowledgeBase::where('category', 'SOP Customer Service')->get();
         $faqs = Faq::all();
@@ -102,7 +124,11 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
 
         $prompt = $context . $historyText;
 
-        $response = $this->callGeminiJson($prompt, $apiKey, $conversation->id);
+        if ($openAiToken) {
+            $response = $this->callOpenAiJson($prompt, $openAiToken, $conversation->id);
+        } else {
+            $response = $this->callGeminiJson($prompt, $apiKey, $conversation->id);
+        }
         
         $replyText = $response['reply'] ?? "Maaf, kami sedang mengalami gangguan.";
         if (!empty($response['source_citation'])) {
@@ -118,8 +144,12 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
 
     public function generateSummary(Conversation $conversation)
     {
+        $openAiToken = $this->getOpenAiToken();
         $apiKey = $this->getApiKey();
-        if (!$apiKey) return "API Key Gemini belum dikonfigurasi untuk ringkasan.";
+
+        if (!$openAiToken && !$apiKey) {
+            return "API Key belum dikonfigurasi untuk ringkasan.";
+        }
 
         $messages = $conversation->messages()->orderBy('created_at', 'asc')->get();
         if ($messages->count() < 2) {
@@ -141,7 +171,11 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
 
         $prompt = "Buatlah analisis percakapan singkat dalam bahasa Indonesia format JSON dengan key: 'topic' (string), 'status' (string, misal 'Selesai'/'Menunggu Info'), dan 'next_action' (string, tindakan selanjutnya).\n\n" . $historyText;
 
-        $responseJson = $this->callGeminiJson($prompt, $apiKey, $conversation->id);
+        if ($openAiToken) {
+            $responseJson = $this->callOpenAiJson($prompt, $openAiToken, $conversation->id);
+        } else {
+            $responseJson = $this->callGeminiJson($prompt, $apiKey, $conversation->id);
+        }
         
         $summary = "Topik: " . ($responseJson['topic'] ?? 'N/A') . "\n";
         $summary .= "Status: " . ($responseJson['status'] ?? 'N/A') . "\n";
@@ -211,6 +245,79 @@ For 'source_citation', write exactly where you found the answer (e.g., 'Source: 
             $data = $response->json();
             $responseText = $data['candidates'][0]['content']['parts'][0]['text'] ?? "{}";
             $tokenUsage = $data['usageMetadata']['totalTokenCount'] ?? 0;
+        }
+
+        // Write AI Log
+        AiLog::create([
+            'conversation_id' => $conversationId,
+            'prompt' => $prompt,
+            'response' => $responseText,
+            'token_usage' => $tokenUsage
+        ]);
+
+        return json_decode($responseText, true) ?? [];
+    }
+
+    private function callOpenAi($prompt, $openAiToken, $conversationId = null)
+    {
+        $setting = \App\Models\AiSetting::first();
+        $model = ($setting && str_contains($setting->model, 'gpt')) ? $setting->model : 'gpt-4o-mini';
+        $temperature = $setting ? $setting->temperature : 0.7;
+
+        $response = Http::withToken($openAiToken)
+            ->post("https://api.openai.com/v1/chat/completions", [
+                'model' => $model,
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt]
+                ],
+                'temperature' => $temperature,
+                'max_tokens' => 800,
+            ]);
+
+        $responseText = "Maaf, terjadi kesalahan pada layanan AI.";
+        $tokenUsage = 0;
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $responseText = $data['choices'][0]['message']['content'] ?? "Gagal memproses respons AI.";
+            $tokenUsage = $data['usage']['total_tokens'] ?? 0;
+        }
+
+        // Write AI Log
+        AiLog::create([
+            'conversation_id' => $conversationId,
+            'prompt' => $prompt,
+            'response' => $responseText,
+            'token_usage' => $tokenUsage
+        ]);
+
+        return $responseText;
+    }
+
+    private function callOpenAiJson($prompt, $openAiToken, $conversationId = null)
+    {
+        $setting = \App\Models\AiSetting::first();
+        $model = ($setting && str_contains($setting->model, 'gpt')) ? $setting->model : 'gpt-4o-mini';
+        $temperature = $setting ? $setting->temperature : 0.1;
+
+        $response = Http::withToken($openAiToken)
+            ->post("https://api.openai.com/v1/chat/completions", [
+                'model' => $model,
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt]
+                ],
+                'temperature' => $temperature,
+                'max_tokens' => 800,
+                'response_format' => ['type' => 'json_object']
+            ]);
+
+        $responseText = "{}";
+        $tokenUsage = 0;
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $responseText = $data['choices'][0]['message']['content'] ?? "{}";
+            $tokenUsage = $data['usage']['total_tokens'] ?? 0;
         }
 
         // Write AI Log
