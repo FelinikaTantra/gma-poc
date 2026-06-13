@@ -48,7 +48,9 @@ class ChannelSettingsController extends Controller
             'full_control' => $request->boolean('full_control'),
             'openai_token' => $request->input('openai_token'),
             'personality' => $request->input('personality'),
-            'briefing' => $request->input('briefing')
+            'briefing' => $request->input('briefing'),
+            'kpi_lead_time_ai' => $request->input('kpi_lead_time_ai', 15),
+            'kpi_lead_time_manual' => $request->input('kpi_lead_time_manual', 300)
         ];
 
         if (!$aiSetting) {

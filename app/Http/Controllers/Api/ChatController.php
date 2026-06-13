@@ -177,11 +177,42 @@ class ChatController extends Controller
             }
         }
 
+        $aiSetting = \App\Models\AiSetting::first();
+        $kpiLeadTimeAi = $aiSetting ? $aiSetting->kpi_lead_time_ai : 15;
+        $kpiLeadTimeManual = $aiSetting ? $aiSetting->kpi_lead_time_manual : 300;
+
+        $messages = \App\Models\Message::orderBy('conversation_id')->orderBy('created_at')->get();
+        $aiTimes = [];
+        $manualTimes = [];
+
+        $prevMsg = null;
+        foreach ($messages as $msg) {
+            if ($prevMsg && $prevMsg->conversation_id === $msg->conversation_id) {
+                if ($prevMsg->sender_type === 'customer') {
+                    $diffInSeconds = \Carbon\Carbon::parse($msg->created_at)->diffInSeconds(\Carbon\Carbon::parse($prevMsg->created_at), true);
+                    
+                    if ($msg->sender_type === 'ai') {
+                        $aiTimes[] = $diffInSeconds;
+                    } elseif ($msg->sender_type === 'admin') {
+                        $manualTimes[] = $diffInSeconds;
+                    }
+                }
+            }
+            $prevMsg = $msg;
+        }
+
+        $avgAiTime = count($aiTimes) > 0 ? (float)(array_sum($aiTimes) / count($aiTimes)) : 0.0;
+        $avgManualTime = count($manualTimes) > 0 ? (float)(array_sum($manualTimes) / count($manualTimes)) : 0.0;
+
         return response()->json([
             'total_conversations' => $conversations->count(),
             'total_messages' => $totalMessages,
             'by_channel' => $byChannel,
-            'by_status' => $byStatus
+            'by_status' => $byStatus,
+            'avg_lead_time_ai' => round($avgAiTime, 1),
+            'avg_lead_time_manual' => round($avgManualTime, 1),
+            'kpi_lead_time_ai' => $kpiLeadTimeAi,
+            'kpi_lead_time_manual' => $kpiLeadTimeManual
         ]);
     }
 

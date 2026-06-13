@@ -152,6 +152,8 @@ const SettingsView = () => {
     // AI Personality & Briefing state
     const [personality, setPersonality] = useState('');
     const [briefing, setBriefing] = useState('');
+    const [kpiLeadTimeAi, setKpiLeadTimeAi] = useState(15);
+    const [kpiLeadTimeManual, setKpiLeadTimeManual] = useState(300);
 
     useEffect(() => {
         lucide.createIcons();
@@ -170,6 +172,8 @@ const SettingsView = () => {
             setOpenAiToken(settingsData.ai_setting.openai_token || '');
             setPersonality(settingsData.ai_setting.personality || '');
             setBriefing(settingsData.ai_setting.briefing || '');
+            setKpiLeadTimeAi(settingsData.ai_setting.kpi_lead_time_ai ?? 15);
+            setKpiLeadTimeManual(settingsData.ai_setting.kpi_lead_time_manual ?? 300);
         }
     }, [settingsData]);
 
@@ -192,7 +196,9 @@ const SettingsView = () => {
                 full_control: val, 
                 openai_token: openAiToken,
                 personality: personality,
-                briefing: briefing
+                briefing: briefing,
+                kpi_lead_time_ai: kpiLeadTimeAi,
+                kpi_lead_time_manual: kpiLeadTimeManual
             })
         }).then(() => refetchSettings());
     };
@@ -205,7 +211,9 @@ const SettingsView = () => {
                 full_control: settingsData.ai_setting.full_control,
                 openai_token: openAiToken,
                 personality: personality,
-                briefing: briefing
+                briefing: briefing,
+                kpi_lead_time_ai: kpiLeadTimeAi,
+                kpi_lead_time_manual: kpiLeadTimeManual
             })
         })
         .then(res => res.json())
@@ -607,6 +615,33 @@ const SettingsView = () => {
                                 onChange={e => setBriefing(e.target.value)} 
                                 placeholder="E.g., Jawab pertanyaan customer secara singkat dan padat berdasarkan informasi produk yang ada. Jika produk tidak ditemukan di katalog, tawarkan produk alternatif yang mirip."
                             />
+                        </div>
+                        <div style=@{{marginBottom: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem'}}>
+                            <div style=@{{fontWeight: 600, color: 'white', marginBottom: '1rem'}}>KPI Response Time Targets</div>
+                            <div style=@{{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                                <div>
+                                    <label style=@{{fontSize: '0.75rem', color: '#94a3b8'}}>KPI Lead Time AI (seconds)</label>
+                                    <input 
+                                        type="number" 
+                                        className="form-control" 
+                                        style=@{{padding: '0.5rem', fontSize: '0.875rem', marginTop: '0.25rem'}} 
+                                        value={kpiLeadTimeAi} 
+                                        onChange={e => setKpiLeadTimeAi(parseInt(e.target.value) || 0)} 
+                                        placeholder="e.g. 15"
+                                    />
+                                </div>
+                                <div>
+                                    <label style=@{{fontSize: '0.75rem', color: '#94a3b8'}}>KPI Lead Time Manual (seconds)</label>
+                                    <input 
+                                        type="number" 
+                                        className="form-control" 
+                                        style=@{{padding: '0.5rem', fontSize: '0.875rem', marginTop: '0.25rem'}} 
+                                        value={kpiLeadTimeManual} 
+                                        onChange={e => setKpiLeadTimeManual(parseInt(e.target.value) || 0)} 
+                                        placeholder="e.g. 300"
+                                    />
+                                </div>
+                            </div>
                         </div>
                         <div style=@{{display: 'flex', gap: '0.5rem', marginTop: '1rem'}}>
                             <button className="btn" onClick={saveAiSettings}>Save AI Settings</button>

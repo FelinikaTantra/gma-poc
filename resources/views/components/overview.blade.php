@@ -22,7 +22,16 @@ const OverviewView = () => {
         );
     }
 
-    const { total_conversations = 0, total_messages = 0, by_channel = {}, by_status = {} } = stats || {};
+    const { 
+        total_conversations = 0, 
+        total_messages = 0, 
+        by_channel = {}, 
+        by_status = {},
+        avg_lead_time_ai = 0,
+        avg_lead_time_manual = 0,
+        kpi_lead_time_ai = 15,
+        kpi_lead_time_manual = 300
+    } = stats || {};
 
     const platforms = [
         { name: 'Telegram', icon: 'send', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
@@ -49,35 +58,36 @@ const OverviewView = () => {
 
             <div style=@{{padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1200px'}}>
                 {/* Metric Cards Row */}
-                <div style=@{{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem'}}>
+                <div style=@{{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem'}}>
                     {/* Card 1: Total Conversations */}
                     <div className="card" style=@{{
                         marginBottom: 0,
                         position: 'relative',
                         overflow: 'hidden',
                         background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.05) 100%)',
-                        border: '1px solid rgba(59, 130, 246, 0.2)'
+                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                        padding: '1.25rem'
                     }}>
                         <div style=@{{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                             <div>
-                                <div style=@{{fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500}}>Total Incoming Chats</div>
-                                <div style=@{{fontSize: '2.5rem', fontWeight: 700, color: 'white', marginTop: '0.5rem'}}>{total_conversations}</div>
+                                <div style=@{{fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500}}>Total Incoming Chats</div>
+                                <div style=@{{fontSize: '2.2rem', fontWeight: 700, color: 'white', marginTop: '0.25rem'}}>{total_conversations}</div>
                             </div>
                             <div style=@{{
-                                width: 56,
-                                height: 56,
-                                borderRadius: '1rem',
+                                width: 44,
+                                height: 44,
+                                borderRadius: '0.75rem',
                                 background: 'rgba(59, 130, 246, 0.2)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justify: 'center',
                                 color: '#60a5fa'
                             }}>
-                                <i data-lucide="message-square" style=@{{width: 28, height: 28}}></i>
+                                <i data-lucide="message-square" style=@{{width: 22, height: 22}}></i>
                             </div>
                         </div>
-                        <div style=@{{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem'}}>
-                            Across all connected platform integrations
+                        <div style=@{{fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.75rem'}}>
+                            Across all platform integrations
                         </div>
                     </div>
 
@@ -87,28 +97,119 @@ const OverviewView = () => {
                         position: 'relative',
                         overflow: 'hidden',
                         background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(139, 92, 246, 0.05) 100%)',
-                        border: '1px solid rgba(16, 185, 129, 0.2)'
+                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                        padding: '1.25rem'
                     }}>
                         <div style=@{{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                             <div>
-                                <div style=@{{fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500}}>Total Messages Exchanged</div>
-                                <div style=@{{fontSize: '2.5rem', fontWeight: 700, color: 'white', marginTop: '0.5rem'}}>{total_messages}</div>
+                                <div style=@{{fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500}}>Total Messages</div>
+                                <div style=@{{fontSize: '2.2rem', fontWeight: 700, color: 'white', marginTop: '0.25rem'}}>{total_messages}</div>
                             </div>
                             <div style=@{{
-                                width: 56,
-                                height: 56,
-                                borderRadius: '1rem',
+                                width: 44,
+                                height: 44,
+                                borderRadius: '0.75rem',
                                 background: 'rgba(16, 185, 129, 0.2)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justify: 'center',
                                 color: '#34d399'
                             }}>
-                                <i data-lucide="database" style=@{{width: 28, height: 28}}></i>
+                                <i data-lucide="database" style=@{{width: 22, height: 22}}></i>
                             </div>
                         </div>
-                        <div style=@{{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem'}}>
-                            Total incoming and outgoing message counts
+                        <div style=@{{fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.75rem'}}>
+                            Incoming & outgoing message count
+                        </div>
+                    </div>
+
+                    {/* Card 3: AI Lead Time */}
+                    <div className="card" style=@{{
+                        marginBottom: 0,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%)',
+                        border: '1px solid rgba(139, 92, 246, 0.2)',
+                        padding: '1.25rem'
+                    }}>
+                        <div style=@{{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <div>
+                                <div style=@{{fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500}}>Avg AI Lead Time</div>
+                                <div style=@{{fontSize: '2.2rem', fontWeight: 700, color: 'white', marginTop: '0.25rem'}}>
+                                    {avg_lead_time_ai > 0 ? `${avg_lead_time_ai}s` : 'N/A'}
+                                </div>
+                            </div>
+                            <div style=@{{
+                                width: 44,
+                                height: 44,
+                                borderRadius: '0.75rem',
+                                background: 'rgba(139, 92, 246, 0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justify: 'center',
+                                color: '#a78bfa'
+                            }}>
+                                <i data-lucide="bot" style=@{{width: 22, height: 22}}></i>
+                            </div>
+                        </div>
+                        <div style=@{{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', fontSize: '0.7rem'}}>
+                            <span style=@{{color: 'var(--text-muted)'}}>Target KPI: {kpi_lead_time_ai}s</span>
+                            {avg_lead_time_ai === 0 ? (
+                                <span style=@{{color: 'var(--text-muted)'}}>No Data</span>
+                            ) : avg_lead_time_ai <= kpi_lead_time_ai ? (
+                                <span style=@{{color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'}}>
+                                    <i data-lucide="check" style=@{{width: 10, height: 10}}></i> On Target
+                                </span>
+                            ) : (
+                                <span style=@{{color: '#f87171', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'}}>
+                                    <i data-lucide="alert-triangle" style=@{{width: 10, height: 10}}></i> Over KPI
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Card 4: Manual CS Lead Time */}
+                    <div className="card" style=@{{
+                        marginBottom: 0,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(139, 92, 246, 0.05) 100%)',
+                        border: '1px solid rgba(245, 158, 11, 0.2)',
+                        padding: '1.25rem'
+                    }}>
+                        <div style=@{{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <div>
+                                <div style=@{{fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500}}>Avg Manual Lead Time</div>
+                                <div style=@{{fontSize: '2.2rem', fontWeight: 700, color: 'white', marginTop: '0.25rem'}}>
+                                    {avg_lead_time_manual > 0 ? `${avg_lead_time_manual}s` : 'N/A'}
+                                </div>
+                            </div>
+                            <div style=@{{
+                                width: 44,
+                                height: 44,
+                                borderRadius: '0.75rem',
+                                background: 'rgba(245, 158, 11, 0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justify: 'center',
+                                color: '#fbbf24'
+                            }}>
+                                <i data-lucide="user" style=@{{width: 22, height: 22}}></i>
+                            </div>
+                        </div>
+                        <div style=@{{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', fontSize: '0.7rem'}}>
+                            <span style=@{{color: 'var(--text-muted)'}}>Target KPI: {kpi_lead_time_manual}s</span>
+                            {avg_lead_time_manual === 0 ? (
+                                <span style=@{{color: 'var(--text-muted)'}}>No Data</span>
+                            ) : avg_lead_time_manual <= kpi_lead_time_manual ? (
+                                <span style=@{{color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'}}>
+                                    <i data-lucide="check" style=@{{width: 10, height: 10}}></i> On Target
+                                </span>
+                            ) : (
+                                <span style=@{{color: '#f87171', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'}}>
+                                    <i data-lucide="alert-triangle" style=@{{width: 10, height: 10}}></i> Over KPI
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
