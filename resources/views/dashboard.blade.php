@@ -333,6 +333,18 @@
             const { data: inbox, refetch: refetchInbox } = useApi('/api/conversations');
             const { data: conversation, refetch: refetchConversation } = useApi(selectedChat ? `/api/conversations/${selectedChat}/messages` : null);
 
+            // Auto sync Telegram messages on mount
+            useEffect(() => {
+                fetch('/api/settings/telegram/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(() => {
+                    refetchInbox();
+                })
+                .catch(err => console.error('Auto-sync failed:', err));
+            }, []);
+
             // Poll for new messages every 5 seconds
             useEffect(() => {
                 const interval = setInterval(() => {
