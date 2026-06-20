@@ -14,13 +14,21 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <!-- Babel CDN for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script>
+        Babel.registerPreset("custom-react", {
+            presets: [
+                [Babel.availablePresets["react"], { runtime: "classic" }],
+                Babel.availablePresets["es2015"]
+            ]
+        });
+    </script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div id="app"></div>
 
-    <script type="text/babel">
+    <script type="text/babel" data-presets="custom-react">
         const { useState, useEffect, useRef } = React;
 
         const useApi = (url, options = {}) => {
